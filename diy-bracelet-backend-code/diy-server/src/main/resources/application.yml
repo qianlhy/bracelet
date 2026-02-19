@@ -1,0 +1,73 @@
+server:
+  port: 8080
+  address: 0.0.0.0  # 监听所有网络接口，允许通过局域网IP访问
+
+spring:
+  profiles:
+    active: dev
+#    todo 上线的时候改成dev
+  main:
+    allow-circular-references: true
+  datasource:
+    druid:
+      driver-class-name: ${sky.datasource.driver-class-name}
+      url: jdbc:mysql://${sky.datasource.host}:${sky.datasource.port}/${sky.datasource.database}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
+      username: ${sky.datasource.username}
+      password: ${sky.datasource.password}
+  redis:
+    host: ${sky.redis.host}
+    port: ${sky.redis.port}
+    #password: ${sky.redis.password}
+    database:  ${sky.redis.database}
+mybatis:
+  #mapper配置文件
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.diy.entity
+  configuration:
+    map-underscore-to-camel-case: true
+  #开启驼峰命名
+
+logging:
+  level:
+    com:
+      diy:
+        mapper: debug
+        service: info
+        controller: info
+        utils: debug
+    org:
+      springframework:
+        web: debug
+
+diy:
+  jwt:
+    # 设置jwt签名加密时使用的秘钥
+    admin-secret-key: itcast
+    # 设置jwt过期时间
+    admin-ttl: 720000000
+    # 设置前端传递过来的令牌名称
+    admin-token-name: authentication
+    user-secret-key: itcast
+    user-ttl: 720000000
+    user-token-name: authentication
+  alioss:
+    endpoint: ${sky.alioss.endpoint}
+    access-key-id: ${sky.alioss.access-key-id}
+    access-key-secret: ${sky.alioss.access-key-secret}
+    bucket-name: ${sky.alioss.bucket-name}
+  wxcloud:
+    storage:
+      bucket-name: ${sky.wxcloud.storage.bucket-name}
+      region: ${sky.wxcloud.storage.region}
+  wechat:
+    appid: ${sky.wechat.appid:wxcfa41f1d1bc716a8}
+    secret: ${sky.wechat.secret:18166e4cdca2a2d1fbfa2fa4db1f6bf4}
+    mchid: ${sky.wechat.mchid:1734348120}
+    mchSerialNo: ${sky.wechat.mchSerialNo:5631D4B837843E6E770BE80D00AFC8B86B38A97B}
+    privateKeyFilePath: ${sky.wechat.privateKeyFilePath:/app/certs/apiclient_key.pem}
+    apiV3Key: ${sky.wechat.apiV3Key:12345678910111213141516171819202}
+    weChatPayPublicKeyId: ${sky.wechat.weChatPayPublicKeyId:PUB_KEY_ID_0117343481202025120300381767000202}
+    weChatPayPublicKeyPath: ${sky.wechat.weChatPayPublicKeyPath:/app/certs/pub_key.pem}
+    wechatPayCertFilePath: ${sky.wechat.wechatPayCertFilePath:}
+    notifyUrl: ${sky.wechat.notifyUrl:https://springboot-gq7m-207364-6-1391651365.sh.run.tcloudbase.com/notify/paySuccess}
+    refundNotifyUrl: ${sky.wechat.refundNotifyUrl:https://springboot-gq7m-207364-6-1391651365.sh.run.tcloudbase.com/notify/refundSuccess}
