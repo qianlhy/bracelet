@@ -216,16 +216,52 @@
           <text class="popup-close" @click="showSizeSelector = false">✕</text>
         </view>
         <view class="popup-body">
-          <view class="size-options">
-            <view 
-              class="size-opt" 
-              :class="{selected: selectedSize === s}" 
-              v-for="s in sizeOptions" 
-              :key="s" 
-              @click="selectSize(s)"
-            >
-              <text class="opt-num">{{ s }}</text>
-              <text class="opt-unit">cm</text>
+          <!-- 戴法选择 -->
+          <view class="wear-style-section">
+            <text class="section-label">选择戴法</text>
+            <view class="wear-style-options">
+              <view 
+                class="wear-style-opt" 
+                :class="{selected: wearStyle === 'single'}" 
+                @click="selectWearStyle('single')"
+              >
+                <view class="style-radio">
+                  <view v-if="wearStyle === 'single'" class="style-radio-inner"></view>
+                </view>
+                <view class="style-info">
+                  <text class="style-name">单圈</text>
+                  <text class="style-desc">适合日常佩戴</text>
+                </view>
+              </view>
+              <view 
+                class="wear-style-opt" 
+                :class="{selected: wearStyle === 'double'}" 
+                @click="selectWearStyle('double')"
+              >
+                <view class="style-radio">
+                  <view v-if="wearStyle === 'double'" class="style-radio-inner"></view>
+                </view>
+                <view class="style-info">
+                  <text class="style-name">双圈</text>
+                  <text class="style-desc">适合宽松手围</text>
+                </view>
+              </view>
+            </view>
+          </view>
+          <!-- 尺寸选择 -->
+          <view class="size-section">
+            <text class="section-label">手围尺寸</text>
+            <view class="size-options">
+              <view 
+                class="size-opt" 
+                :class="{selected: selectedSize === s}" 
+                v-for="s in currentSizeOptions" 
+                :key="s" 
+                @click="selectSize(s)"
+              >
+                <text class="opt-num">{{ s }}</text>
+                <text class="opt-unit">cm</text>
+              </view>
             </view>
           </view>
         </view>
@@ -351,18 +387,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, getCurrentInstance, nextTick, watch } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
+import { computed, getCurrentInstance, nextTick, onMounted, ref, watch } from 'vue'
 // 直接从 api.js 导入以避免 index.js 可能的重导出问题
 import {
-  designCategoryList,
-  designProductList,
-  designOrderCreate,
-  uploadFile,
-  addToCart
+addToCart,
+designCategoryList,
+designProductList,
+uploadFile
 } from '../../api/api.js'
-import { resolveImageUrl } from '../../utils/imageHelper.js'
 import { updateCartBadgeNow } from '../../utils/cartBadge.js'
+import { resolveImageUrl } from '../../utils/imageHelper.js'
 
 // 实例
 const instance = getCurrentInstance()
@@ -396,7 +431,19 @@ watch(selectedSize, (newVal) => {
   uni.setStorageSync('diy_selected_size', newVal)
 })
 const sizeOptions = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+const doubleSizeOptions = [26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44]
 const showSizeSelector = ref(false)
+
+// 戴法选择：single-单圈，double-双圈
+const wearStyle = ref(uni.getStorageSync('diy_wear_style') || 'single')
+watch(wearStyle, (newVal) => {
+  uni.setStorageSync('diy_wear_style', newVal)
+})
+
+// 根据戴法获取尺寸选项
+const currentSizeOptions = computed(() => {
+  return wearStyle.value === 'double' ? doubleSizeOptions : sizeOptions
+})
 
 // 拖拽和交换
 const draggingIndex = ref(-1)
@@ -1385,6 +1432,18 @@ function onProductScrollToLower() {
   }
 }
 
+// 戴法选择
+function selectWearStyle(style) {
+  wearStyle.value = style
+  uni.setStorageSync('diy_wear_style', style)
+  // 切换戴法时，如果当前尺寸不在新范围内，自动选择范围内的第一个
+  const options = style === 'double' ? doubleSizeOptions : sizeOptions
+  if (!options.includes(selectedSize.value)) {
+    selectedSize.value = options[0]
+    uni.setStorageSync('diy_selected_size', options[0])
+  }
+}
+
 // 尺寸选择
 function selectSize(s) {
   selectedSize.value = s
@@ -2368,12 +2427,80 @@ onShow(() => {
   border: none;
 }
 
+/* 戴法选择 */
+.wear-style-section {
+  margin-bottom: 32rpx;
+}
+.section-label {
+  display: block;
+  font-size: 28rpx;
+  color: #333;
+  margin-bottom: 20rpx;
+  font-weight: 500;
+}
+.wear-style-options {
+  display: flex;
+  gap: 20rpx;
+}
+.wear-style-opt {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  background: #f8f8f8;
+  border-radius: 16rpx;
+  border: 2rpx solid transparent;
+  transition: all 0.2s ease;
+}
+.wear-style-opt.selected {
+  background: #fdf8f3;
+  border-color: #d4a574;
+}
+.style-radio {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  border: 2rpx solid #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+.wear-style-opt.selected .style-radio {
+  border-color: #d4a574;
+}
+.style-radio-inner {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 50%;
+  background: #d4a574;
+}
+.style-info {
+  display: flex;
+  flex-direction: column;
+}
+.style-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 6rpx;
+}
+.style-desc {
+  font-size: 22rpx;
+  color: #999;
+}
+
+/* 尺寸选择 */
+.size-section {
+  margin-bottom: 20rpx;
+}
+
 /* 尺寸选项 */
 .size-options {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12rpx;
-  margin-bottom: 20rpx;
 }
 .size-options.compact { grid-template-columns: repeat(4, 1fr); }
 .size-opt {
