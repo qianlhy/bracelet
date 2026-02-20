@@ -87,11 +87,11 @@
       </view>
       <view class="amount-row">
         <text class="label">运费</text>
-        <text class="value">¥0.00</text>
+        <text class="value">¥{{ shippingFee.toFixed(2) }}</text>
       </view>
       <view class="amount-row total">
         <text class="label">实付款</text>
-        <text class="value">¥{{ totalAmount }}</text>
+        <text class="value">¥{{ finalAmount }}</text>
       </view>
     </view>
 
@@ -99,7 +99,7 @@
     <view class="submit-bar">
       <view class="total-info">
         <text class="label">合计：</text>
-        <text class="amount">¥{{ totalAmount }}</text>
+        <text class="amount">¥{{ finalAmount }}</text>
       </view>
       <view class="btn-group">
         <button class="action-btn submit-btn" :disabled="!selectedAddress || submitting" @click="submitOrder">
@@ -111,9 +111,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { cartList, orderCreate, addressList, createDiyOrder, submitOrder as apiSubmitOrder, cartAdd, clearCart } from '../../api/index.js'
+import { computed, ref } from 'vue'
+import { addressList, cartAdd, cartList, clearCart, createDiyOrder, orderCreate } from '../../api/index.js'
 import { resolveImageUrl } from '../../utils/imageHelper.js'
 
 const cartItems = ref([])
@@ -127,6 +127,23 @@ const diyName = ref('')
 
 const totalAmount = computed(() => {
   return cartItems.value.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0).toFixed(2)
+})
+
+// 运费计算：新疆、西藏加15元，其他省份0元
+const shippingFee = computed(() => {
+  if (!selectedAddress.value || !selectedAddress.value.province) {
+    return 0
+  }
+  const province = selectedAddress.value.province
+  if (province.includes('新疆') || province.includes('西藏')) {
+    return 15
+  }
+  return 0
+})
+
+// 实付款 = 商品金额 + 运费
+const finalAmount = computed(() => {
+  return (Number(totalAmount.value) + shippingFee.value).toFixed(2)
 })
 
 const classificationDetails = ref({})
