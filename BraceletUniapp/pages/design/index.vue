@@ -127,16 +127,55 @@
 <!-- 暂时屏蔽以排查 wx://not-found 错误 -->
 <!-- <canvas type="2d" id="exportCanvas" class="export-canvas" style="width: 560rpx; height: 560rpx; position: fixed; left: -9999px;"></canvas> -->      <view class="section-header">
         <scroll-view class="category-tabs" scroll-x :show-scrollbar="false">
-          <view 
-            class="cat-tab" 
-            :class="{active: activeCategory === cat.keyCode}" 
-            v-for="cat in displayCategories" 
-            :key="cat.keyCode" 
+          <view
+            class="cat-tab"
+            :class="{active: activeCategory === cat.keyCode}"
+            v-for="cat in displayCategories"
+            :key="cat.keyCode"
             @click="switchCategory(cat.keyCode)"
           >
             <text>{{ cat.name }}</text>
           </view>
         </scroll-view>
+        <!-- 搜索框 -->
+        <view class="search-box">
+          <view class="search-input-wrapper">
+            <text class="search-icon">🔍</text>
+            <input
+              class="search-input"
+              type="text"
+              v-model="searchKeyword"
+              placeholder="搜索珠子/配饰/吊坠"
+              @input="onSearchInput"
+              @focus="onSearchFocus"
+              @blur="onSearchBlur"
+            />
+            <text v-if="searchKeyword" class="search-clear" @click="clearSearch">✕</text>
+          </view>
+          <!-- 搜索结果下拉框 -->
+          <view v-if="showSearchResults && searchResults.length > 0" class="search-dropdown">
+            <scroll-view class="search-dropdown-scroll" scroll-y :show-scrollbar="false">
+              <view
+                v-for="item in searchResults"
+                :key="item.id"
+                class="search-result-item"
+                @click="selectSearchResult(item)"
+              >
+                <image v-if="item.imageUrl" class="search-result-img" :src="item.imageUrl" mode="aspectFit" />
+                <view v-else class="search-result-color" :style="{background: item.color || '#e8e8e8'}"></view>
+                <view class="search-result-info">
+                  <text class="search-result-name">{{ item.title }}</text>
+                  <text class="search-result-category">{{ item.categoryName }}</text>
+                </view>
+                <text class="search-result-price">¥{{ item.price }}</text>
+              </view>
+            </scroll-view>
+          </view>
+          <!-- 无搜索结果提示 -->
+          <view v-else-if="showSearchResults && searchKeyword && !searchResults.length" class="search-dropdown">
+            <view class="search-empty">未找到相关商品</view>
+          </view>
+        </view>
       </view>
       
       <view class="section-body">
@@ -416,6 +455,12 @@ const activeColor = ref('')
 const goods = ref([])
 const allGoods = ref([]) // 用于前端分页的完整数据缓存
 const loading = ref(false)
+
+// 搜索相关
+const searchKeyword = ref('')
+const searchResults = ref([])
+const showSearchResults = ref(false)
+const searchTimer = ref(null)
 // 分页状态
 const page = ref(1)
 const pageSize = ref(20)
@@ -1354,6 +1399,140 @@ function switchColor(key) {
 // 废弃的方法，保留空实现以防模板报错
 function switchClassification(key, id) {}
 
+// ==================== 搜索相关方法 ====================
+
+// 搜索输入处理（防抖）
+function onSearchInput() {
+  if (searchTimer.value) {
+    clearTimeout(searchTimer.value)
+  }
+  searchTimer.value = setTimeout(() => {
+    performSearch()
+  }, 300)
+}
+
+// 执行搜索
+async function performSearch() {
+  const keyword = searchKeyword.value.trim()
+  if (!keyword) {
+    searchResults.value = []
+    showSearchResults.value = false
+    return
+  }
+
+  // 从所有分类中搜索商品
+  const results = []
+  const lowerKeyword = keyword.toLowerCase()
+
+  // 遍历所有分类获取商品
+  for (const category of categories.value) {
+    if (category.keyCode === 'rope') continue // 跳过绳子分类
+
+    try {
+      const res = await designProductList({
+        categories: [category.keyCode],
+        page: 1,
+        size: 100 // 获取较多数据用于搜索
+      })
+
+      // 解析返回数据，与 loadProducts 保持一致
+      const products = Array.isArray(res) ? res : []
+      for (const product of products) {
+        // 处理图片路径
+        let imageUrl = product.imageUrl || product.image || ''
+        imageUrl = resolveImageUrl(imageUrl)
+        if (imageUrl && !imageUrl.startsWith('data:')) {
+          try {
+            imageUrl = encodeURI(imageUrl)
+          } catch (e) {}
+        }
+
+        if (product.title && product.title.toLowerCase().includes(lowerKeyword)) {
+          results.push({
+            ...product,
+            imageUrl,
+            categoryKey: category.keyCode,
+            categoryName: category.name
+          })
+        }
+      }
+    } catch (e) {
+      console.error('搜索分类失败:', category.keyCode, e)
+    }
+  }
+
+  searchResults.value = results.slice(0, 20) // 最多显示20条
+  showSearchResults.value = true
+}
+
+// 搜索框获得焦点
+function onSearchFocus() {
+  if (searchKeyword.value.trim() && searchResults.value.length > 0) {
+    showSearchResults.value = true
+  }
+}
+
+// 搜索框失去焦点（延迟隐藏，以便点击下拉项）
+function onSearchBlur() {
+  setTimeout(() => {
+    showSearchResults.value = false
+  }, 200)
+}
+
+// 清空搜索
+// 选择搜索结果
+async function selectSearchResult(item) {
+  // 1. 切换到对应分类
+  if (activeCategory.value !== item.categoryKey) {
+    activeCategory.value = item.categoryKey
+  }
+  
+  // 2. 重置子分类筛选
+  activeColor.value = ''
+
+  // 3. 只显示选中的商品，过滤掉其他商品
+  resetProductListView()
+  page.value = 1
+  totalPages.value = 1
+  
+  // 设置商品列表只包含选中的商品
+  goods.value = [{
+    ...item,
+    loaded: false
+  }]
+  allGoods.value = []
+
+  // 4. 隐藏搜索结果
+  showSearchResults.value = false
+  
+  // 5. 高亮显示该商品
+  nextTick(() => {
+    clickedId.value = item.id
+    setTimeout(() => {
+      clickedId.value = null
+    }, 1000)
+  })
+}
+
+// 清空搜索，恢复显示所有商品
+function clearSearch() {
+  searchKeyword.value = ''
+  searchResults.value = []
+  showSearchResults.value = false
+  if (searchTimer.value) {
+    clearTimeout(searchTimer.value)
+    searchTimer.value = null
+  }
+  
+  // 重新加载当前分类的所有商品
+  resetProductListView()
+  page.value = 1
+  totalPages.value = 1
+  goods.value = []
+  allGoods.value = []
+  loadProducts()
+}
+
 // 加载商品
 async function loadProducts(isLoadMore = false) {
   const requestSeq = ++productRequestSeq
@@ -2167,13 +2346,148 @@ onShow(() => {
 .section-header {
   height: 80rpx;
   border-bottom: 1rpx solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  padding: 0 20rpx;
+}
+
+/* 搜索框样式 */
+.search-box {
+  position: relative;
+  margin-left: 20rpx;
+  flex-shrink: 0;
+}
+
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  width: 280rpx;
+  height: 56rpx;
+  background: #f5f5f5;
+  border-radius: 28rpx;
+  padding: 0 20rpx;
+}
+
+.search-icon {
+  font-size: 24rpx;
+  margin-right: 12rpx;
+  color: #999;
+}
+
+.search-input {
+  flex: 1;
+  height: 100%;
+  font-size: 24rpx;
+  color: #333;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: #bbb;
+}
+
+.search-clear {
+  font-size: 20rpx;
+  color: #999;
+  padding: 8rpx;
+  margin-left: 8rpx;
+}
+
+/* 搜索结果下拉框 */
+.search-dropdown {
+  position: absolute;
+  top: 64rpx;
+  right: 0;
+  width: 400rpx;
+  max-height: 600rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.search-dropdown-scroll {
+  max-height: 600rpx;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx;
+  border-bottom: 1rpx solid #f5f5f5;
+  transition: background 0.2s;
+}
+
+.search-result-item:active {
+  background: #f9f9f9;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-img {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 12rpx;
+  background: #f5f5f5;
+  flex-shrink: 0;
+}
+
+.search-result-color {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+}
+
+.search-result-info {
+  flex: 1;
+  margin-left: 20rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.search-result-name {
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-result-category {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 6rpx;
+}
+
+.search-result-price {
+  font-size: 28rpx;
+  color: #ff6b6b;
+  font-weight: 600;
+  margin-left: 16rpx;
+}
+
+.search-empty {
+  padding: 40rpx;
+  text-align: center;
+  font-size: 28rpx;
+  color: #999;
 }
 
 .category-tabs {
   white-space: nowrap;
   height: 100%;
   line-height: 80rpx;
-  padding: 0 20rpx;
+  flex: 1;
+  overflow: hidden;
 }
 
 .cat-tab {
