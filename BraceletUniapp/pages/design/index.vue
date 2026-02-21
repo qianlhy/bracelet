@@ -839,33 +839,71 @@ function addBead(g, event) {
     uni.showToast({ title: '暂时缺货', icon: 'none' })
     return
   }
-  cancelPendingAdd()
+  // 移除 cancelPendingAdd() 调用，允许快速连续点击添加多个珠子
+  // cancelPendingAdd()
   // 移除硬性数量限制，由 checkCapacity 根据手围和珠径动态控制
   // if (beads.value.length >= 32) { ... }
-  
+
   // 检查是否会重合（超过一圈）
   if (!checkCapacity(g)) {
     uni.showToast({ title: '已达到当前手围的最大容量', icon: 'none' })
     return
   }
 
+  // 立即添加珠子到数据（不等待动画）
+  // 扣减库存
+  if (g.stock > 0) {
+    g.stock--
+  }
+
+  const newBead = {
+    _id: `b_${++beadIdCounter}`,
+    productId: g.id,
+    title: g.title,
+    price: g.price,
+    size: g.size,
+    color: g.color,
+    imageUrl: g.imageUrl,
+    loadFailed: false,
+    isNew: true
+  }
+  beads.value.push(newBead)
+
+  // 设置点击反馈效果
   clickedId.value = g.id
   vibrate()
-  
+
+  // 清除之前的点击反馈定时器
+  if (pendingNewFlagTimer) {
+    clearTimeout(pendingNewFlagTimer)
+  }
+
+  // 移除 isNew 标记
+  pendingNewFlagTimer = setTimeout(() => {
+    pendingNewFlagTimer = null
+    newBead.isNew = false
+    clickedId.value = null
+  }, 350)
+
+  // 飞行动画（可选，不影响数据添加）
+  // 使用局部变量保存当前珠子的信息，避免快速点击时动画混乱
+  const beadColor = g.color || '#e8e8e8'
+  const beadImageUrl = g.imageUrl
+
   // 获取颜色
-  let color = g.color || '#e8e8e8'
+  let color = beadColor
   if (color.includes('gradient')) {
     const m = color.match(/#[0-9a-fA-F]{6}/)
     if (m) color = m[0]
   }
-  
+
   // 启动飞行动画
-  flyingBead.value = { color, imageUrl: g.imageUrl }
-  
+  flyingBead.value = { color, imageUrl: beadImageUrl }
+
   // 计算起点位置
   let startX = '50%'
   let startY = '100%'
-  
+
   if (event && event.detail) {
     // 尝试获取点击位置
     // 注意：event.detail 在不同平台可能包含 x,y 或 clientX,clientY
@@ -879,11 +917,11 @@ function addBead(g, event) {
     startX = event.touches[0].clientX + 'px'
     startY = event.touches[0].clientY + 'px'
   }
-  
+
   // 动态创建动画关键帧
   // 由于 uniapp 无法动态修改 @keyframes，我们使用 CSS 变量或动态 style 结合 transition
   // 但为了效果更好，我们使用 transform 直接定位起始点
-  
+
   flyingBeadStyle.value = `
     left: ${startX};
     top: ${startY};
@@ -892,7 +930,7 @@ function addBead(g, event) {
     opacity: 1;
     transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   `
-  
+
   // 强制重绘后执行动画
   pendingAnimTimer = setTimeout(() => {
     pendingAnimTimer = null
@@ -908,36 +946,12 @@ function addBead(g, event) {
       transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     `
   }, 20)
-  
-  // 动画结束后添加珠子
+
+  // 动画结束后清理
   pendingAddTimer = setTimeout(() => {
     pendingAddTimer = null
     flyingBead.value = null
-    clickedId.value = null
-    
-    // 扣减库存
-    if (g.stock > 0) {
-      g.stock--
-    }
-    
-    beads.value.push({
-      _id: `b_${++beadIdCounter}`,
-      productId: g.id,
-      title: g.title,
-      price: g.price,
-      size: g.size,
-      color: g.color,
-      imageUrl: g.imageUrl,
-      loadFailed: false,
-      isNew: true
-    })
-    
-    pendingNewFlagTimer = setTimeout(() => {
-      pendingNewFlagTimer = null
-      const last = beads.value[beads.value.length - 1]
-      if (last) last.isNew = false
-    }, 350)
-  }, 350)
+  }, 520)
 }
 
 function updateStock(productId, delta) {
