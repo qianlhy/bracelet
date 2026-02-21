@@ -604,6 +604,12 @@ function isPendant(bead) {
   return title.endsWith('吊坠')
 }
 
+// 判断是否为花托或隔断（不计算在长度内）
+function isSpacerOrSeparator(bead) {
+  const title = String(bead?.title || '')
+  return title.includes('花托') || title.includes('隔断') || title.includes('隔圈')
+}
+
 // 目标珠子数
 const targetCount = computed(() => {
   if (!beads.value.length) return Math.round(selectedSize.value * 10 / 8)
@@ -782,26 +788,32 @@ const beadLayouts = computed(() => {
 function checkCapacity(newItem) {
   // 最大周长 (mm) - 严格按照表格规格 (手围 + 2.4cm)
   const maxMm = (selectedSize.value + 2.4) * 10
-  
-  // 当前总长 (mm)
+
+  // 当前总长 (mm) - 排除花托和隔断
   let currentMm = 0
   beads.value.forEach(b => {
-    // 吊坠也占长度 (3mm)
+    // 花托和隔断不计算在长度内
+    if (isSpacerOrSeparator(b)) {
+      return
+    }
+    // 吊坠占长度 (3mm)
     if (isPendant(b)) {
       currentMm += 3
     } else {
       currentMm += Number(b.size || 8)
     }
   })
-  
-  // 新增的珠子
+
+  // 新增的珠子 - 如果是花托或隔断，不计算长度
   let addSize = 0
-  if (isPendant(newItem)) {
+  if (isSpacerOrSeparator(newItem)) {
+    addSize = 0
+  } else if (isPendant(newItem)) {
     addSize = 3
   } else {
     addSize = Number(newItem.size || 8)
   }
-  
+
   // 允许一定的误差（例如 25mm，约3颗珠子），防止因历史数据轻微超载导致无法操作
   // 只要不是恶意堆叠，稍微超一点点是可以接受的
   if (currentMm + addSize > maxMm + 25) {
