@@ -8,6 +8,8 @@ import com.diy.entity.CartItem;
 import com.diy.mapper.ShoppingCartMapper;
 import com.diy.service.CartItemService;
 import com.diy.vo.CartItemListVO;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -47,14 +49,34 @@ public class CartItemServiceImpl implements CartItemService {
         Long userId = BaseContext.getCurrentId();
         Long productId = addToCartDTO.getProductId();
         Integer quantity = addToCartDTO.getQuantity();
+        String diyData = addToCartDTO.getDiyData();
         
-        // 构造查询条件
+        // 判断是否是DIY设计（productId为0或负数表示DIY设计）
+        boolean isDiyDesign = productId == null || productId <= 0;
+
+        if (isDiyDesign) {
+            // DIY设计：每次添加都是新的记录，不合并
+            // 使用负数作为product_id，确保唯一性（避免唯一索引冲突）
+            long diyProductId = -System.currentTimeMillis();
+
+            CartItem newItem = CartItem.builder()
+                    .userId(userId)
+                    .productId(diyProductId) // 使用负数，唯一
+                    .quantity(quantity != null ? quantity : 1)
+                    .diyData(diyData)
+                    .createTime(LocalDateTime.now())
+                    .build();
+            shoppingCartMapper.insert(newItem);
+            System.out.println(newItem);
+            return newItem;
+        }
+        
+        // 普通商品：检查是否已存在，存在则更新数量
         CartItem cartItemQuery = CartItem.builder()
                 .userId(userId)
                 .productId(productId)
                 .build();
         
-        // 查询购物车中是否已存在该商品
         List<CartItem> cartItems = shoppingCartMapper.list(cartItemQuery);
         
         CartItem cartItemResult;
@@ -102,12 +124,57 @@ public class CartItemServiceImpl implements CartItemService {
         // 转换为VO
         List<CartItemListVO.CartItem> items = cartItems.stream().map(map -> {
             CartItemListVO.CartItem item = new CartItemListVO.CartItem();
-            item.setProductId((Long) map.get("productId"));
-            item.setTitle((String) map.get("title"));
-            item.setPrice((BigDecimal) map.get("price"));
+            item.setId((Long) map.get("id"));
+            Long productId = (Long) map.get("productId");
+            item.setProductId(productId);
             item.setQuantity((Integer) map.get("quantity"));
-            //拼接图片地址
-            item.setCoverImage(IMAGE_URL_PREFEX+((String) map.get("coverImage")));
+            
+            // 判断是否是DIY设计（productId为负数表示DIY）
+            boolean isDiy = productId != null && productId < 0;
+            item.setIsDiy(isDiy);
+            
+            if (isDiy) {
+                // DIY设计：从diyData字段解析数据
+                String diyData = (String) map.get("diyData");
+                item.setDiyData(diyData);
+
+                // 解析DIY数据获取标题、价格、图片等
+                if (diyData != null && !diyData.isEmpty()) {
+                    try {
+                        ObjectMapper mapper = new ObjectMapper();
+                        JsonNode root = mapper.readTree(diyData);
+
+                        // 从JSON中读取字段
+                        String title = root.has("title") ? root.get("title").asText() : "DIY设计";
+                        BigDecimal price = root.has("price") ? new BigDecimal(root.get("price").asText()) : BigDecimal.ZERO;
+                        String imageUrl = root.has("imageUrl") ? root.get("imageUrl").asText() : "";
+                        String size = root.has("size") ? root.get("size").asText() : "";
+
+                        item.setTitle(title);
+                        item.setPrice(price);
+                        item.setCoverImage(imageUrl);
+                        item.setDiySize(size);
+                    } catch (Exception e) {
+                        log.error("解析DIY数据失败", e);
+                        item.setTitle("DIY设计（解析失败）");
+                        item.setPrice(BigDecimal.ZERO);
+                        item.setCoverImage("");
+                        item.setDiySize("");
+                    }
+                } else {
+                    item.setTitle("DIY设计");
+                    item.setPrice(BigDecimal.ZERO);
+                    item.setCoverImage("");
+                    item.setDiySize("");
+                }
+            } else {
+                // 普通商品：从product表获取信息
+                item.setTitle((String) map.get("title"));
+                item.setPrice((BigDecimal) map.get("price"));
+                String coverImage = (String) map.get("coverImage");
+                item.setCoverImage(coverImage != null ? IMAGE_URL_PREFEX + coverImage : "");
+            }
+            
             return item;
         }).collect(Collectors.toList());
         
@@ -140,8 +207,18 @@ public class CartItemServiceImpl implements CartItemService {
     @Override
     public void deleteFromCart(DeleteFromCartDTO deleteFromCartDTO) {
         Long userId = BaseContext.getCurrentId();
+        Long id = deleteFromCartDTO.getId();
         Long productId = deleteFromCartDTO.getProductId();
         
+        // 如果提供了ID，直接通过ID删除（适用于DIY商品）
+        if (id != null) {
+            log.info("删除购物车商品，用户ID: {}, 购物车项ID: {}", userId, id);
+            shoppingCartMapper.deleteById(id);
+            log.info("成功删除购物车商品，购物车项ID: {}", id);
+            return;
+        }
+        
+        // 否则通过productId删除（普通商品）
         log.info("删除购物车商品，用户ID: {}, 商品ID: {}", userId, productId);
         
         // 构造查询条件

@@ -32,4 +32,7 @@ public class CartItem implements Serializable {
 
     //加入时间
     private LocalDateTime createTime;
+
+    //DIY设计数据（JSON格式，用于存储DIY设计详情）
+    private String diyData;
 }

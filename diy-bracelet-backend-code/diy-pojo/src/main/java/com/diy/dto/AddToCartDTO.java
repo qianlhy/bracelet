@@ -15,4 +15,7 @@ public class AddToCartDTO implements Serializable {
 
     @ApiModelProperty("购买数量")
     private Integer quantity;
+
+    @ApiModelProperty("DIY设计数据（JSON格式）")
+    private String diyData;
 }

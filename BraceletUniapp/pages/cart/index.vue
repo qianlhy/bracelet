@@ -11,20 +11,26 @@
       <view v-if="!items.length" class="empty">购物车空空如也～</view>
 
       <view v-else class="list">
-      <view v-for="i in items" :key="i.productId || i.id" class="row" :class="{updating: updating, deleting: deleting}">
+      <view v-for="i in items" :key="i.id" class="row" :class="{updating: updating, deleting: deleting, 'diy-item': i.isDiy}">
         <view class="thumb">
           <image v-if="i.imageUrl" :src="i.imageUrl" mode="aspectFill" class="thumb-img" />
+          <view v-if="i.isDiy" class="diy-badge">DIY</view>
         </view>
         <view class="meta">
           <view class="title">{{ i.title }}</view>
           <view class="price">¥{{ i.price }}</view>
-          <view class="stepper">
+          <!-- DIY商品不显示数量调整 -->
+          <view v-if="!i.isDiy" class="stepper">
             <view class="s-btn" :class="{disabled: updating || deleting}" @click="dec(i)">-</view>
             <input class="ipt" type="number" v-model.number="i.quantity" @blur="apply(i)" :disabled="updating || deleting" />
             <view class="s-btn" :class="{disabled: updating || deleting}" @click="inc(i)">+</view>
           </view>
+          <view v-else class="diy-info">
+            <text class="diy-quantity">数量: {{ i.quantity }}</text>
+            <text v-if="i.diySize" class="diy-size">手围: {{ i.diySize }}cm</text>
+          </view>
         </view>
-        <view class="remove" :class="{disabled: updating || deleting}" @click="removeItem(i.productId || i.id)">×</view>
+        <view class="remove" :class="{disabled: updating || deleting}" @click="removeItem(i)">×</view>
       </view>
     </view>
 
@@ -37,9 +43,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { cartList, cartDelete, orderCreate, cartUpdate, isLoggedIn as checkLogin, requireLogin } from '../../api/index.js'
 import { onShow } from '@dcloudio/uni-app'
+import { computed, ref } from 'vue'
+import { cartDelete, cartList, cartUpdate, isLoggedIn as checkLogin } from '../../api/index.js'
 import { updateCartBadge, updateCartBadgeNow } from '../../utils/cartBadge.js'
 import { debugCartBadge } from '../../utils/debugCartBadge.js'
 import { resolveImageUrl } from '../../utils/imageHelper.js'
@@ -79,12 +85,36 @@ async function load() {
     console.log('购物车数据:', res)
     
     let list = res.items || []
-    // 处理图片链接
+    // 处理图片链接，过滤掉无效商品（没有标题或ID的）
     list = list.map(item => {
       let imageUrl = item.coverImage || item.imageUrl || item.image || ''
       imageUrl = resolveImageUrl(imageUrl)
+      
+      // 处理DIY商品数据
+      if (item.isDiy && item.diyData) {
+        try {
+          const diyInfo = JSON.parse(item.diyData)
+          return {
+            ...item,
+            imageUrl: diyInfo.imageUrl || imageUrl,
+            diySize: diyInfo.size,
+            diyBeads: diyInfo.beads || []
+          }
+        } catch (e) {
+          console.error('解析DIY数据失败:', e)
+        }
+      }
+      
       return { ...item, imageUrl }
     })
+    // .filter(item => {
+    //   // 过滤掉无效商品：必须有标题
+    //   const hasTitle = item.title && String(item.title).trim() !== ''
+    //   // DIY商品(productId为负数)也是有效的，普通商品需要有有效的productId
+    //   const isDiy = item.isDiy || (item.productId !== undefined && item.productId !== null && item.productId < 0)
+    //   const hasValidId = isDiy || (item.productId !== undefined && item.productId !== null && item.productId > 0)
+    //   return hasTitle && hasValidId
+    // })
     
     items.value = list
     // 立即更新购物车角标
@@ -99,7 +129,7 @@ async function load() {
   }
 }
 
-async function removeItem(id) {
+async function removeItem(item) {
   if (deleting.value || updating.value) {
     console.log('操作进行中，请稍后')
     return
@@ -107,7 +137,12 @@ async function removeItem(id) {
   
   deleting.value = true
   try {
-    await cartDelete(Number(id))
+    // 调用API删除商品（支持普通商品和DIY商品）
+    // 如果有id字段优先使用id（DIY商品通过id删除），否则使用productId
+    const productId = item.productId
+    const id = item.id
+    await cartDelete(productId, id)
+    
     await load()
     // 立即更新购物车角标
     updateCartBadgeNow()
@@ -248,7 +283,7 @@ if (typeof window !== 'undefined') {
 .row { background: #ffffff; border-radius: 16rpx; padding: 16rpx; display: flex; gap: 16rpx; align-items: center; box-shadow: 0 6rpx 16rpx rgba(0,0,0,0.04); transition: all 0.3s ease; }
 .row.updating { opacity: 0.6; }
 .row.deleting { opacity: 0.3; transform: translateX(-20rpx); }
-.thumb { width: 140rpx; height: 140rpx; background: #e9eef3; border-radius: 12rpx; overflow: hidden; }
+.thumb { width: 140rpx; height: 140rpx; background: #e9eef3; border-radius: 12rpx; overflow: hidden; position: relative; }
 .thumb-img { width: 100%; height: 100%; border-radius: 12rpx; }
 .meta { flex: 1; }
 .title { font-size: 28rpx; color: #333; }
@@ -262,6 +297,13 @@ if (typeof window !== 'undefined') {
 .s-btn.disabled { opacity: 0.4; pointer-events: none; }
 .ipt { width: 100rpx; margin: 0 10rpx; text-align: center; height: 54rpx; border: 2rpx solid #eee; border-radius: 10rpx; }
 .ipt:disabled { background: #f9f9f9; color: #999; }
+
+/* DIY商品样式 */
+.diy-item { background: linear-gradient(135deg, #fff9f0, #ffffff); border: 2rpx solid #ffe4c4; }
+.diy-badge { position: absolute; top: 8rpx; left: 8rpx; background: linear-gradient(135deg, #d4a574, #c9976c); color: #fff; font-size: 20rpx; padding: 4rpx 12rpx; border-radius: 8rpx; font-weight: 600; }
+.diy-info { margin-top: 10rpx; display: flex; flex-direction: column; gap: 4rpx; }
+.diy-quantity { font-size: 24rpx; color: #666; }
+.diy-size { font-size: 22rpx; color: #999; }
 
 .bar { position: fixed; left: 0; right: 0; bottom: 0; background: #ffffff; padding: 12rpx 24rpx calc(12rpx + env(safe-area-inset-bottom)); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 -6rpx 12rpx rgba(0,0,0,0.04); }
 .total { color: #333; font-size: 28rpx; }

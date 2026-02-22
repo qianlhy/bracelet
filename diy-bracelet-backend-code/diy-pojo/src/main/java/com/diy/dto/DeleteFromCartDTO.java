@@ -12,4 +12,7 @@ public class DeleteFromCartDTO implements Serializable {
 
     @ApiModelProperty("商品ID")
     private Long productId;
+
+    @ApiModelProperty("购物车项ID（优先使用）")
+    private Long id;
 }

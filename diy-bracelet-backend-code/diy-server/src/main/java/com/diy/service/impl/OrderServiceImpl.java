@@ -1,5 +1,7 @@
 package com.diy.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.github.pagehelper.Page;
@@ -81,32 +83,68 @@ public class OrderServiceImpl implements OrderService {
             Long productId = cartItem.getProductId();
             Integer quantity = cartItem.getQuantity();
 
-            Product product = productMapper.getById(productId);
-            if (product == null) {
-                throw new OrderBusinessException(MessageConstant.PRODUCT_NOT_FOUND);
+            // 判断是否是DIY商品（productId为负数）
+            boolean isDiy = productId != null && productId < 0;
+
+            if (isDiy) {
+                // DIY商品：从diyData中解析信息
+                String diyData = cartItem.getDiyData();
+                if (diyData == null || diyData.isEmpty()) {
+                    throw new OrderBusinessException("DIY商品数据缺失");
+                }
+
+                try {
+                    ObjectMapper mapper = new ObjectMapper();
+                    JsonNode root = mapper.readTree(diyData);
+
+                    String title = root.has("title") ? root.get("title").asText() : "DIY设计";
+                    BigDecimal price = root.has("price") ? new BigDecimal(root.get("price").asText()) : BigDecimal.ZERO;
+                    String imageUrl = root.has("imageUrl") ? root.get("imageUrl").asText() : "";
+
+                    BigDecimal itemAmount = price.multiply(new BigDecimal(quantity));
+                    totalAmount = totalAmount.add(itemAmount);
+
+                    OrderItem orderItem = OrderItem.builder()
+                            .productId(productId)
+                            .title(title)
+                            .price(price)
+                            .quantity(quantity)
+                            .productImage(imageUrl)
+                            .build();
+                    orderItems.add(orderItem);
+                } catch (Exception e) {
+                    log.error("解析DIY数据失败", e);
+                    throw new OrderBusinessException("DIY商品数据解析失败");
+                }
+            } else {
+                // 普通商品：查询product表
+                Product product = productMapper.getById(productId);
+                if (product == null) {
+                    throw new OrderBusinessException(MessageConstant.PRODUCT_NOT_FOUND);
+                }
+
+                // 检查库存是否充足
+                if (product.getStock() == null || product.getStock() < quantity) {
+                    throw new OrderBusinessException("商品【" + product.getTitle() + "】库存不足，当前库存：" +
+                        (product.getStock() == null ? 0 : product.getStock()));
+                }
+
+                // 扣减库存
+                product.setStock(product.getStock() - quantity);
+                productMapper.update(product);
+
+                BigDecimal itemAmount = product.getPrice().multiply(new BigDecimal(quantity));
+                totalAmount = totalAmount.add(itemAmount);
+
+                OrderItem orderItem = OrderItem.builder()
+                        .productId(productId)
+                        .title(product.getTitle())
+                        .price(product.getPrice())
+                        .quantity(quantity)
+                        .productImage(product.getCoverImage())
+                        .build();
+                orderItems.add(orderItem);
             }
-
-            // 检查库存是否充足
-            if (product.getStock() == null || product.getStock() < quantity) {
-                throw new OrderBusinessException("商品【" + product.getTitle() + "】库存不足，当前库存：" + 
-                    (product.getStock() == null ? 0 : product.getStock()));
-            }
-
-            // 扣减库存
-            product.setStock(product.getStock() - quantity);
-            productMapper.update(product);
-
-            BigDecimal itemAmount = product.getPrice().multiply(new BigDecimal(quantity));
-            totalAmount = totalAmount.add(itemAmount);
-
-            OrderItem orderItem = OrderItem.builder()
-                    .productId(productId)
-                    .title(product.getTitle())
-                    .price(product.getPrice())
-                    .quantity(quantity)
-                    .productImage(product.getCoverImage())
-                    .build();
-            orderItems.add(orderItem);
         }
 
         String orderNo = "ORD" + System.currentTimeMillis();
@@ -158,6 +196,8 @@ public class OrderServiceImpl implements OrderService {
         log.info("购物车商品数量: {}", cartItems != null ? cartItems.size() : 0);
 
         if (cartItems == null || cartItems.isEmpty()) {
+            System.out.println(cartItems == null);
+            System.out.println(cartItems.isEmpty());
             throw new OrderBusinessException(MessageConstant.SHOPPING_CART_IS_NULL);
         }
 
@@ -169,33 +209,70 @@ public class OrderServiceImpl implements OrderService {
             Integer quantity = cartItem.getQuantity();
             log.info("处理购物车商品: productId={}, quantity={}", productId, quantity);
 
-            Product product = productMapper.getById(productId);
-            if (product == null) {
-                throw new OrderBusinessException(MessageConstant.PRODUCT_NOT_FOUND);
+            // 判断是否是DIY商品（productId为负数）
+            boolean isDiy = productId != null && productId < 0;
+
+            if (isDiy) {
+                // DIY商品：从diyData中解析信息
+                String diyData = cartItem.getDiyData();
+                if (diyData == null || diyData.isEmpty()) {
+                    throw new OrderBusinessException("DIY商品数据缺失");
+                }
+
+                try {
+                    ObjectMapper mapper = new ObjectMapper();
+                    JsonNode root = mapper.readTree(diyData);
+
+                    String title = root.has("title") ? root.get("title").asText() : "DIY设计";
+                    BigDecimal price = root.has("price") ? new BigDecimal(root.get("price").asText()) : BigDecimal.ZERO;
+                    String imageUrl = root.has("imageUrl") ? root.get("imageUrl").asText() : "";
+
+                    BigDecimal itemAmount = price.multiply(new BigDecimal(quantity));
+                    totalAmount = totalAmount.add(itemAmount);
+
+                    OrderItem orderItem = OrderItem.builder()
+                            .productId(productId)
+                            .title(title)
+                            .price(price)
+                            .quantity(quantity)
+                            .productImage(imageUrl)
+                            .build();
+                    orderItems.add(orderItem);
+                    log.info("添加DIY订单项: title={}, price={}, quantity={}", title, price, quantity);
+                } catch (Exception e) {
+                    log.error("解析DIY数据失败", e);
+                    throw new OrderBusinessException("DIY商品数据解析失败");
+                }
+            } else {
+                // 普通商品：查询product表
+                Product product = productMapper.getById(productId);
+                if (product == null) {
+                    throw new OrderBusinessException(MessageConstant.PRODUCT_NOT_FOUND);
+                }
+
+                // 检查库存是否充足
+                if (product.getStock() == null || product.getStock() < quantity) {
+                    throw new OrderBusinessException("商品【" + product.getTitle() + "】库存不足，当前库存：" +
+                        (product.getStock() == null ? 0 : product.getStock()));
+                }
+
+                // 扣减库存
+                product.setStock(product.getStock() - quantity);
+                productMapper.update(product);
+
+                BigDecimal itemAmount = product.getPrice().multiply(new BigDecimal(quantity));
+                totalAmount = totalAmount.add(itemAmount);
+
+                OrderItem orderItem = OrderItem.builder()
+                        .productId(productId)
+                        .title(product.getTitle())
+                        .price(product.getPrice())
+                        .quantity(quantity)
+                        .productImage(product.getCoverImage())
+                        .build();
+                orderItems.add(orderItem);
+                log.info("添加订单项: title={}, price={}, quantity={}", product.getTitle(), product.getPrice(), quantity);
             }
-
-            // 检查库存是否充足
-            if (product.getStock() == null || product.getStock() < quantity) {
-                throw new OrderBusinessException("商品【" + product.getTitle() + "】库存不足，当前库存：" + 
-                    (product.getStock() == null ? 0 : product.getStock()));
-            }
-
-            // 扣减库存
-            product.setStock(product.getStock() - quantity);
-            productMapper.update(product);
-
-            BigDecimal itemAmount = product.getPrice().multiply(new BigDecimal(quantity));
-            totalAmount = totalAmount.add(itemAmount);
-
-            OrderItem orderItem = OrderItem.builder()
-                    .productId(productId)
-                    .title(product.getTitle())
-                    .price(product.getPrice())
-                    .quantity(quantity)
-                    .productImage(product.getCoverImage())
-                    .build();
-            orderItems.add(orderItem);
-            log.info("添加订单项: title={}, price={}, quantity={}", product.getTitle(), product.getPrice(), quantity);
         }
 
         String orderNo = "ORD" + System.currentTimeMillis();
@@ -891,14 +968,16 @@ public class OrderServiceImpl implements OrderService {
         for (OrderItem orderItem : orderItems) {
             Long productId = orderItem.getProductId();
             Integer quantity = orderItem.getQuantity();
-            
+
+            // 根据productId判断商品类型：负数表示DIY商品
+            boolean isDiyProduct = productId != null && productId < 0;
+
             try {
-                if (isDiyOrder) {
-                    // DIY订单：回滚 diy_material 表的库存
-                    diyMaterialMapper.rollbackStock(productId, quantity);
-                    log.info("成功回滚 DIY 材料库存: materialId={}, quantity={}", productId, quantity);
+                if (isDiyProduct) {
+                    // DIY商品：跳过库存回滚（DIY商品没有库存概念）
+                    log.info("DIY商品无需回滚库存: productId={}", productId);
                 } else {
-                    // 普通商品订单：回滚 product 表的库存
+                    // 普通商品：回滚 product 表的库存
                     Product product = productMapper.getById(productId);
                     if (product != null) {
                         product.setStock(product.getStock() + quantity);
@@ -909,8 +988,8 @@ public class OrderServiceImpl implements OrderService {
                     }
                 }
             } catch (Exception e) {
-                log.error("回滚库存失败: productId={}, quantity={}, 订单类型={}", 
-                    productId, quantity, isDiyOrder ? "DIY" : "普通商品", e);
+                log.error("回滚库存失败: productId={}, quantity={}, 商品类型={}",
+                    productId, quantity, isDiyProduct ? "DIY" : "普通商品", e);
                 throw new RuntimeException("回滚库存失败", e);
             }
         }

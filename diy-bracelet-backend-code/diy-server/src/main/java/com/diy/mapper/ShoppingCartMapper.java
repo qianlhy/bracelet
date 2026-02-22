@@ -4,6 +4,7 @@ import com.diy.entity.CartItem;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
@@ -31,9 +32,9 @@ public interface ShoppingCartMapper {
      * 插入购物车
      * @param cartItem
      */
-    @Insert("insert into cart_item(user_id, product_id, quantity, create_time) " +
+    @Insert("insert into cart_item(user_id, product_id, quantity, create_time,diy_data) " +
         "values " +
-        "(#{userId},#{productId},#{quantity},#{createTime})")
+        "(#{userId},#{productId},#{quantity},#{createTime},#{diyData})")
     void insert(CartItem cartItem);
 
     /**

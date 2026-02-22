@@ -16,11 +16,13 @@
     
     <select id="listWithProductInfo" resultType="map">
         SELECT 
+            ci.id as id,
             ci.product_id as productId,
             p.title as title,
             p.price as price,
             ci.quantity as quantity,
-            p.cover_image as coverImage
+            p.cover_image as coverImage,
+            ci.diy_data as diyData
         FROM cart_item ci
         LEFT JOIN product p ON ci.product_id = p.id
         WHERE ci.user_id = #{userId}

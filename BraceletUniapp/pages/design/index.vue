@@ -14,10 +14,16 @@
           <text class="price-num">¥{{ totalPrice }}</text>
         </view>
         <view class="action-btns">
-
-          <button 
-            class="checkout-btn" 
-            :disabled="!beads.length" 
+          <button
+            class="cart-btn"
+            :disabled="!beads.length"
+            @click="addToCartFromDesign"
+          >
+            加入购物车
+          </button>
+          <button
+            class="checkout-btn"
+            :disabled="!beads.length"
             @click="showPreview"
           >
             结算
@@ -421,6 +427,24 @@
       </view>
     </view>
 
+    <!-- 登录提示弹窗 -->
+    <view v-if="showLoginPopup" class="mask" @click="closeLoginPopup">
+      <view class="popup login-popup" @click.stop>
+        <view class="popup-header">
+          <text class="popup-title">提示</text>
+          <text class="popup-close" @click="closeLoginPopup">✕</text>
+        </view>
+        <view class="login-popup-body">
+          <view class="login-icon">🔒</view>
+          <text class="login-tip">请先登录后再加入购物车</text>
+        </view>
+        <view class="login-popup-actions">
+          <button class="login-btn-cancel" @click="closeLoginPopup">取消</button>
+          <button class="login-btn-confirm" @click="goToLogin">去登录</button>
+        </view>
+      </view>
+    </view>
+
     <canvas type="2d" id="exportCanvas" class="export-canvas" style="width: 560rpx; height: 560rpx; position: fixed; left: 200%; top: 0; pointer-events: none; opacity: 0;"></canvas>
   </view>
 </template>
@@ -435,6 +459,7 @@ designCategoryList,
 designProductList,
 uploadFile
 } from '../../api/api.js'
+import { isLoggedIn } from '../../api/index.js'
 import { updateCartBadgeNow } from '../../utils/cartBadge.js'
 import { resolveImageUrl } from '../../utils/imageHelper.js'
 
@@ -501,6 +526,7 @@ const isAutoArranged = ref(false) // 是否一键排列（均匀分布）
 const showOrderPreview = ref(false)
 const showInitGuide = ref(false)
 const showHelpPopup = ref(false)
+const showLoginPopup = ref(false)
 const dontShowHelpAgain = ref(false)
 const isToolbarCollapsed = ref(false)
 
@@ -1312,6 +1338,85 @@ function showTips() {
   showHelpPopup.value = true
 }
 
+// ==================== 登录和购物车相关方法 ====================
+
+// 关闭登录弹窗
+function closeLoginPopup() {
+  showLoginPopup.value = false
+}
+
+// 跳转到登录页面
+function goToLogin() {
+  showLoginPopup.value = false
+  // 使用 switchTab 跳转到首页（tab页面），制作台页面会被保留在后台
+  uni.switchTab({ url: '/pages/index/index' })
+}
+
+// 检查登录状态
+function checkLoginStatus() {
+  // 使用 api/index.js 中的 isLoggedIn 函数
+  return isLoggedIn()
+}
+
+// 从设计台加入购物车
+async function addToCartFromDesign() {
+  if (!beads.value.length) {
+    uni.showToast({ title: '请先添加珠子', icon: 'none' })
+    return
+  }
+
+  // 检查登录状态
+  if (!checkLoginStatus()) {
+    showLoginPopup.value = true
+    return
+  }
+
+  // 已登录，执行加入购物车逻辑
+  try {
+    uni.showLoading({ title: '加入中...' })
+
+    // 计算DIY商品的总价和总数量
+    const diyTotalPrice = beads.value.reduce((sum, bead) => sum + Number(bead.price || 0), 0)
+    const diyBeadCount = beads.value.length
+
+    // 使用第一个珠子的信息
+    const firstBead = beads.value[0]
+
+    // 构建DIY设计数据
+    const diyData = JSON.stringify({
+      title: `DIY设计（${diyBeadCount}颗珠子）`,
+      price: diyTotalPrice,
+      imageUrl: firstBead.imageUrl || '',
+      color: firstBead.color || '#e8e8e8',
+      size: selectedSize.value,
+      beadCount: diyBeadCount,
+      beads: beads.value.map(b => ({
+        productId: b.productId,
+        title: b.title,
+        price: b.price,
+        size: b.size,
+        color: b.color,
+        imageUrl: b.imageUrl
+      }))
+    })
+
+    // 调用API添加DIY设计到购物车
+    // productId传0表示DIY设计
+    await addToCart(0, 1, diyData)
+
+    uni.hideLoading()
+    uni.showToast({ title: '已加入购物车', icon: 'success' })
+
+    // 更新购物车角标
+    updateCartBadgeNow()
+
+  } catch (e) {
+    uni.hideLoading()
+    console.error('加入购物车失败:', e)
+    uni.showToast({ title: e.message || '加入失败', icon: 'none' })
+  }
+}
+
 function vibrate() {
   uni.vibrateShort()
 }
@@ -2120,26 +2225,30 @@ onShow(() => {
 }
 
 .cart-btn {
-    width: 64rpx;
-    height: 64rpx;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #fdf8f4;
-    border-radius: 50%;
-    border: 1rpx solid #f0e0d0;
-    
-    &:active {
-      background: #f0e0d0;
-    }
-    
-    .cart-icon-img {
-      width: 36rpx;
-      height: 36rpx;
-    }
+  margin: 0;
+  padding: 0 20rpx;
+  height: 56rpx;
+  line-height: 56rpx;
+  font-size: 24rpx;
+  background: #fff;
+  color: #d4a574;
+  border-radius: 28rpx;
+  border: 2rpx solid #d4a574;
+
+  &::after { border: none; }
+
+  &:active {
+    background: #fdf8f3;
   }
 
-  .checkout-btn {
+  &[disabled] {
+    background: #f5f5f5;
+    color: #ccc;
+    border-color: #eee;
+  }
+}
+
+.checkout-btn {
   margin: 0;
   padding: 0 24rpx;
   height: 56rpx;
@@ -3135,6 +3244,60 @@ onShow(() => {
 }
 
 .help-btn {
+  margin: 0;
+  height: 80rpx;
+  line-height: 80rpx;
+  background: linear-gradient(135deg, #d4a574, #c9976c);
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 600;
+  border-radius: 40rpx;
+}
+
+/* 登录提示弹窗 */
+.login-popup {
+  width: 560rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  overflow: hidden;
+}
+
+.login-popup-body {
+  padding: 60rpx 40rpx;
+  text-align: center;
+}
+
+.login-icon {
+  font-size: 80rpx;
+  margin-bottom: 24rpx;
+}
+
+.login-tip {
+  display: block;
+  font-size: 30rpx;
+  color: #333;
+  line-height: 1.5;
+}
+
+.login-popup-actions {
+  display: flex;
+  padding: 0 40rpx 40rpx;
+  gap: 20rpx;
+}
+
+.login-btn-cancel {
+  flex: 1;
+  margin: 0;
+  height: 80rpx;
+  line-height: 80rpx;
+  background: #f5f5f5;
+  color: #666;
+  font-size: 28rpx;
+  border-radius: 40rpx;
+}
+
+.login-btn-confirm {
+  flex: 1;
   margin: 0;
   height: 80rpx;
   line-height: 80rpx;

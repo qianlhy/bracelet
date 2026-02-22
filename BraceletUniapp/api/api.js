@@ -3,8 +3,8 @@
  * 基于 api-documentation.json v1.0.0
  */
 
-import { get, post, put, del } from './request.js'
-import { API_PATHS, STORAGE_TOKEN_KEY, STORAGE_USER_KEY, API_BASE_URL, TOKEN_HEADER, RESPONSE_CODE } from '../config.js'
+import { API_BASE_URL, API_PATHS, RESPONSE_CODE, STORAGE_TOKEN_KEY, STORAGE_USER_KEY, TOKEN_HEADER } from '../config.js'
+import { del, get, post, put } from './request.js'
 
 // ==================== 用户登录模块 ====================
 
@@ -82,10 +82,15 @@ export function getProductDetail(id) {
  * 添加商品到购物车
  * @param {Number} productId 商品ID
  * @param {Number} quantity 数量
+ * @param {String} diyData DIY设计数据（JSON格式，可选）
  * @returns {Promise}
  */
-export function addToCart(productId, quantity = 1) {
-  return post(API_PATHS.CART_ADD, { productId, quantity })
+export function addToCart(productId, quantity = 1, diyData = null) {
+  const payload = { productId, quantity }
+  if (diyData) {
+    payload.diyData = diyData
+  }
+  return post(API_PATHS.CART_ADD, payload)
 }
 
 /**
@@ -105,10 +110,15 @@ export function getCartList() {
 /**
  * 删除购物车商品
  * @param {Number} productId 商品ID
+ * @param {Number} id 购物车项ID（可选，优先使用）
  * @returns {Promise}
  */
-export function deleteCartItem(productId) {
-  return post(API_PATHS.CART_DELETE, { productId })
+export function deleteCartItem(productId, id = null) {
+  const payload = { productId }
+  if (id !== null && id !== undefined) {
+    payload.id = id
+  }
+  return post(API_PATHS.CART_DELETE, payload)
 }
 
 /**

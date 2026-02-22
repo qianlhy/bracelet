@@ -27,7 +27,10 @@ public class CartItemListVO implements Serializable {
     @AllArgsConstructor
     @ApiModel(description = "购物车项")
     public static class CartItem implements Serializable {
-        
+
+        @ApiModelProperty("购物车项ID")
+        private Long id;
+
         @ApiModelProperty("商品ID")
         private Long productId;
         
@@ -42,5 +45,14 @@ public class CartItemListVO implements Serializable {
         
         @ApiModelProperty("商品图片URL")
         private String coverImage;
+
+        @ApiModelProperty("是否是DIY设计")
+        private Boolean isDiy;
+
+        @ApiModelProperty("DIY设计数据（JSON格式）")
+        private String diyData;
+
+        @ApiModelProperty("DIY手围尺寸")
+        private String diySize;
     }
 }
