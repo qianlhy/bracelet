@@ -98,7 +98,9 @@
       <view class="btn-group">
         <button v-if="detail.status===0" class="btn cancel-btn" @click="handleCancelOrder">取消订单</button>
         <button v-if="detail.status===0" class="btn pay-btn" @click="pay">去支付</button>
+        <button v-else-if="detail.status===1" class="btn cancel-btn" @click="handleRefund">申请退款</button>
         <button v-else-if="detail.status===2" class="btn pay-btn" @click="confirmReceipt">确认收货</button>
+        <button v-else-if="detail.status===4" class="btn cancel-btn" @click="handleCancelRefund">取消退款</button>
         <button v-else class="btn done-btn" disabled>{{ statusText(detail.status) }}</button>
       </view>
     </view>
@@ -107,12 +109,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { orderDetail, orderPay, completeOrder, checkPaymentStatus, cancelOrder } from '../../api/index.js'
-import { STORAGE_TOKEN_KEY } from '../../config.js'
 import { onLoad } from '@dcloudio/uni-app'
-import { handleOrderPayment } from '../../utils/paymentHelper.js'
+import { computed, ref } from 'vue'
+import { cancelOrder, cancelRefundOrder, completeOrder, orderDetail } from '../../api/index.js'
+import { STORAGE_TOKEN_KEY } from '../../config.js'
 import { resolveImageUrl } from '../../utils/imageHelper.js'
+import { handleOrderPayment } from '../../utils/paymentHelper.js'
 
 const detail = ref(null)
 const loading = ref(true)
@@ -142,12 +144,14 @@ const displayMaterials = computed(() => {
 })
 
 function statusText(s) {
-  const m = { 0: '待支付', 1: '已支付', 2: '已发货', 3: '已完成', 4: '退款审核中', 5: '退款中', 6: '已退款' }
+  // 与后端 Orders.java 保持一致：0待支付 1已支付 2已发货 3已完成 4退款中 5已退款 6已取消
+  const m = { 0: '待支付', 1: '已支付', 2: '已发货', 3: '已完成', 4: '退款中', 5: '已退款', 6: '已取消' }
   return m[s] ?? s
 }
 
 const paying = ref(false)
 const confirming = ref(false)
+const cancelingRefund = ref(false)
 
 function isDiyOrder(detail) {
   if (!detail) return false
@@ -336,6 +340,111 @@ async function pay() {
   }).finally(() => {
     paying.value = false
   })
+}
+
+async function handleCancelRefund() {
+  if (cancelingRefund.value) return
+
+  try {
+    const result = await uni.showModal({
+      title: '提示',
+      content: '确定取消退款申请吗？取消后订单将恢复为已支付状态',
+      confirmText: '确定',
+      cancelText: '再想想',
+      confirmColor: '#e54d42'
+    })
+
+    if (!result.confirm) return
+
+    cancelingRefund.value = true
+    uni.showLoading({ title: '处理中...', mask: true })
+
+    const orderId = detail.value.id || detail.value.orderId
+    await cancelRefundOrder(orderId)
+
+    uni.hideLoading()
+    uni.showToast({
+      title: '取消退款成功',
+      icon: 'success',
+      duration: 2000
+    })
+
+    // 更新本地订单状态
+    if (detail.value) {
+      detail.value.status = 1 // 恢复为已支付
+    }
+
+    // 延迟刷新
+    setTimeout(() => {
+      uni.redirectTo({
+        url: '/pages/order/list',
+        fail: () => {
+          uni.navigateBack()
+        }
+      })
+    }, 2000)
+
+  } catch (error) {
+    uni.hideLoading()
+    console.error('取消退款失败：', error)
+    uni.showToast({
+      title: error.message || '取消退款失败',
+      icon: 'none',
+      duration: 2000
+    })
+  } finally {
+    cancelingRefund.value = false
+  }
+}
+
+async function handleRefund() {
+  try {
+    const result = await uni.showModal({
+      title: '申请退款',
+      content: '确定要申请退款吗？申请后需要等待管理员审核',
+      confirmText: '确定',
+      cancelText: '取消',
+      confirmColor: '#e54d42'
+    })
+
+    if (!result.confirm) return
+
+    uni.showLoading({ title: '处理中...', mask: true })
+
+    const orderId = detail.value.id || detail.value.orderId
+    await refundOrder(orderId)
+
+    uni.hideLoading()
+    uni.showToast({
+      title: '申请退款成功',
+      icon: 'success',
+      duration: 2000
+    })
+
+    // 更新本地订单状态为退款中
+    if (detail.value) {
+      detail.value.status = 4
+    }
+
+    // 延迟刷新
+    setTimeout(() => {
+      uni.redirectTo({
+        url: '/pages/order/list',
+        fail: () => {
+          uni.navigateBack()
+        }
+      })
+    }, 2000)
+
+  } catch (error) {
+    uni.hideLoading()
+    console.error('申请退款失败：', error)
+    uni.showToast({
+      title: error.message || '申请退款失败',
+      icon: 'none',
+      duration: 2000
+    })
+  }
 }
 
 onLoad(async (options) => {

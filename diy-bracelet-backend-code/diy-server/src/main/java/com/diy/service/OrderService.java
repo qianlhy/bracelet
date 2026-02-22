@@ -99,7 +99,13 @@ public interface OrderService {
      * @param orderId 订单ID
      */
     void refund(Long orderId) throws Exception;
-    
+
+    /**
+     * 取消退款申请
+     * @param orderId 订单ID
+     */
+    void cancelRefund(Long orderId);
+
     /**
      * 退款成功回调，更新订单状态并回滚库存
      * @param outTradeNo 商户订单号

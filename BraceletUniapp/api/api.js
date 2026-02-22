@@ -267,6 +267,15 @@ export function refundOrder(id) {
   return post(`/user/order/refund/${id}`, {})
 }
 
+/**
+ * 取消退款申请
+ * @param {Number} id 订单ID
+ * @returns {Promise}
+ */
+export function cancelRefundOrder(id) {
+  return put(`/user/order/cancelRefund/${id}`, {})
+}
+
 // ==================== 管理员模块 ====================
 
 /**

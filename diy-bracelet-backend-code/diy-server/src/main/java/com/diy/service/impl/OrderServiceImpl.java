@@ -842,7 +842,56 @@ public class OrderServiceImpl implements OrderService {
         
         log.info("用户退款申请成功，订单ID: {}，状态已更新为退款中，等待管理员审核", orderId);
     }
-    
+
+    @Transactional
+    @Override
+    public void cancelRefund(Long orderId) {
+        log.info("用户取消退款申请，订单ID: {}", orderId);
+
+        // 获取当前用户ID
+        Long userId = BaseContext.getCurrentId();
+        log.info("用户端取消退款，用户ID: {}", userId);
+
+        // 查询订单信息
+        Orders order = orderMapper.getDetailsById(orderId);
+        if (order == null) {
+            log.error("订单不存在，订单ID: {}", orderId);
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+
+        // 验证订单归属
+        if (!userId.equals(order.getUserId())) {
+            log.error("订单不属于当前用户，订单ID: {}, 用户ID: {}, 订单所属用户: {}",
+                orderId, userId, order.getUserId());
+            throw new OrderBusinessException("无权操作该订单");
+        }
+
+        // 限制只有退款中的订单才能取消退款
+        if (!Orders.REFUNDING.equals(order.getStatus())) {
+            log.error("订单状态不允许取消退款，订单ID: {}, 当前状态: {}", orderId, order.getStatus());
+            throw new OrderBusinessException("只有退款中的订单才能取消退款申请");
+        }
+
+        // 检查管理员是否已实际发起退款（refund_id不为空表示已调用微信退款接口）
+        if (order.getRefundId() != null && !order.getRefundId().isEmpty()) {
+            log.error("管理员已发起退款，无法取消，订单ID: {}, refundId: {}", orderId, order.getRefundId());
+            throw new OrderBusinessException("退款已处理，无法取消");
+        }
+
+        // 更新订单状态为已支付，清空退款相关信息
+        LocalDateTime now = LocalDateTime.now();
+        Orders updateOrder = Orders.builder()
+            .id(orderId)
+            .status(Orders.PAID)
+            .refundAmount(null)
+            .refundTime(null)
+            .updateTime(now)
+            .build();
+        orderMapper.update(updateOrder);
+
+        log.info("用户取消退款申请成功，订单ID: {}，状态已恢复为已支付", orderId);
+    }
+
     @Transactional
     @Override
     public void refundSuccess(String outTradeNo) {

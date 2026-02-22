@@ -301,6 +301,20 @@ public class OrderController {
         orderService.refund(id);
         return Result.success();
     }
+
+    /**
+     * 取消退款申请
+     *
+     * @param id 订单ID
+     * @return
+     */
+    @PutMapping("/cancelRefund/{id}")
+    @ApiOperation("取消退款申请")
+    public Result cancelRefund(@PathVariable Long id) {
+        log.info("取消退款申请，订单ID: {}", id);
+        orderService.cancelRefund(id);
+        return Result.success();
+    }
     
     /**
      * 确认收货
