@@ -173,7 +173,8 @@ export function exportOrders (params = {}) {
   return request({
     url: '/admin/order/export',
     method: 'get',
-    params
+    params,
+    timeout: 60000 // 导出接口设置60秒超时，不受全局5秒限制
   })
 }
 
