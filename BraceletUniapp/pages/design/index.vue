@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page" @click="onPageClick">
     <!-- 顶部状态栏 -->
     <view class="header">
       <view class="header-left">
@@ -144,7 +144,7 @@
           </view>
         </scroll-view>
         <!-- 搜索框 -->
-        <view class="search-box">
+        <view class="search-box" @click.stop="onSearchBoxClick">
           <view class="search-input-wrapper">
             <text class="search-icon">🔍</text>
             <input
@@ -155,11 +155,12 @@
               @input="onSearchInput"
               @focus="onSearchFocus"
               @blur="onSearchBlur"
+              @confirm="onSearchConfirm"
             />
-            <text v-if="searchKeyword" class="search-clear" @click="clearSearch">✕</text>
+            <text v-if="searchKeyword" class="search-clear" @click.stop="clearSearch">✕</text>
           </view>
           <!-- 搜索结果下拉框 -->
-          <view v-if="showSearchResults && searchResults.length > 0" class="search-dropdown">
+          <view v-if="showSearchResults && searchResults.length > 0" class="search-dropdown" @click.stop>
             <scroll-view class="search-dropdown-scroll" scroll-y :show-scrollbar="false">
               <view
                 v-for="item in searchResults"
@@ -1589,11 +1590,31 @@ function onSearchFocus() {
   }
 }
 
-// 搜索框失去焦点（延迟隐藏，以便点击下拉项）
+// 搜索框失去焦点 - 不自动隐藏，由点击外部事件控制
 function onSearchBlur() {
-  setTimeout(() => {
-    showSearchResults.value = false
-  }, 200)
+  // 移动端键盘收起时会触发blur，但不能隐藏搜索结果
+  // 只有在点击搜索框外部时才隐藏（由页面点击事件处理）
+}
+
+// 点击完成按钮时保持搜索结果显示
+function onSearchConfirm() {
+  // 用户点击键盘的完成/搜索按钮，保持搜索结果显示
+  if (searchResults.value.length > 0) {
+    showSearchResults.value = true
+  }
+  // 收起键盘
+  uni.hideKeyboard()
+}
+
+// 点击搜索框阻止冒泡
+function onSearchBoxClick() {
+  // 什么都不做，只是阻止事件冒泡
+}
+
+// 点击页面其他地方隐藏搜索结果
+function onPageClick() {
+  // 隐藏搜索结果
+  showSearchResults.value = false
 }
 
 // 清空搜索
