@@ -255,4 +255,72 @@ public class OrderController {
         orderService.adminRefund(orderId, adminPhone);
         return Result.success();
     }
+
+    /**
+     * 导出订单（支持按条件筛选）
+     * @param ordersPageQueryDTO 查询条件
+     * @return
+     */
+    @GetMapping("/export")
+    @ApiOperation("导出订单")
+    public Result<OrderPageVO> exportOrders(OrdersPageQueryDTO ordersPageQueryDTO) {
+        log.info("导出订单: {}", ordersPageQueryDTO);
+
+        // 设置大分页参数以获取更多数据
+        if (ordersPageQueryDTO.getPage() <= 0) {
+            ordersPageQueryDTO.setPage(1);
+        }
+        if (ordersPageQueryDTO.getPageSize() <= 0 || ordersPageQueryDTO.getPageSize() > 10000) {
+            ordersPageQueryDTO.setPageSize(10000);
+        }
+
+        // 分页查询（管理端不需要userId限制）
+        PageResult pageResult = orderService.conditionSearch(ordersPageQueryDTO);
+
+        // 转换为VO（包含订单项详情）
+        List<OrderPageVO.OrderItem> orderItems = new ArrayList<>();
+        if (pageResult.getRecords() != null) {
+            for (Object obj : pageResult.getRecords()) {
+                if (obj instanceof OrderVO) {
+                    OrderVO orderVO = (OrderVO) obj;
+
+                    // 拼接完整地址
+                    String receiverAddress = "";
+                    if (orderVO.getReceiverProvince() != null || orderVO.getReceiverCity() != null ||
+                        orderVO.getReceiverDistrict() != null || orderVO.getReceiverDetail() != null) {
+                        receiverAddress = (orderVO.getReceiverProvince() != null ? orderVO.getReceiverProvince() : "") +
+                                         (orderVO.getReceiverCity() != null ? orderVO.getReceiverCity() : "") +
+                                         (orderVO.getReceiverDistrict() != null ? orderVO.getReceiverDistrict() : "") +
+                                         (orderVO.getReceiverDetail() != null ? orderVO.getReceiverDetail() : "");
+                    }
+
+                    OrderPageVO.OrderItem item = OrderPageVO.OrderItem.builder()
+                            .orderId(orderVO.getId())
+                            .orderNo(orderVO.getOrderNo())
+                            .amount(orderVO.getAmount())
+                            .status(orderVO.getStatus())
+                            .createTime(orderVO.getCreateTime())
+                            .payTime(orderVO.getPayTime())
+                            .receiverName(orderVO.getReceiverName())
+                            .receiverPhone(orderVO.getReceiverPhone())
+                            .receiverAddress(receiverAddress)
+                            .trackingNumber(orderVO.getTrackingNumber())
+                            .transactionId(orderVO.getTransactionId())
+                            .items(orderVO.getOrderItems())
+                            .description(orderVO.getDescription())
+                            .build();
+                    orderItems.add(item);
+                }
+            }
+        }
+
+        OrderPageVO orderPageVO = OrderPageVO.builder()
+                .orders(orderItems)
+                .page(ordersPageQueryDTO.getPage())
+                .size(ordersPageQueryDTO.getPageSize())
+                .total(pageResult.getTotal())
+                .build();
+
+        return Result.success(orderPageVO);
+    }
 }

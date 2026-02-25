@@ -67,5 +67,14 @@ public class OrderPageVO implements Serializable {
         
         @ApiModelProperty("运单号（快递单号）")
         private String trackingNumber;
+
+        @ApiModelProperty("微信支付交易号")
+        private String transactionId;
+
+        @ApiModelProperty("订单项列表")
+        private List<com.diy.entity.OrderItem> items;
+
+        @ApiModelProperty("订单描述/商品信息")
+        private String description;
     }
 }

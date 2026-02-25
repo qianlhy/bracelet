@@ -30,6 +30,7 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="fetchOrders">查询</el-button>
+          <el-button type="success" icon="el-icon-download" @click="exportOrders">导出Excel</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -239,7 +240,8 @@
 </template>
 
 <script>
-import { getOrderList, getOrderDetail, updateOrderStatus, adminRefund } from '@/api/admin'
+import { adminRefund, exportOrders, getOrderDetail, getOrderList, updateOrderStatus } from '@/api/admin'
+import * as XLSX from 'xlsx'
 
 export default {
   name: 'OrderManagement',
@@ -538,6 +540,92 @@ export default {
         return `${base}${relativePath}`
       }
       return `${base}/${relativePath}`
+    },
+
+    // 导出订单到Excel
+    async exportOrders () {
+      try {
+        this.$message.info('正在准备导出数据...')
+
+        // 获取所有符合条件的订单（不分页）
+        const params = {
+          page: 1,
+          pageSize: 10000, // 获取大量数据
+          orderNo: this.filterForm.orderNo || undefined,
+          status: this.filterForm.status
+        }
+
+        const res = await exportOrders(params)
+        const orders = res.data.orders || res.data.records || res.data.list || []
+
+        if (orders.length === 0) {
+          this.$message.warning('没有可导出的数据')
+          return
+        }
+
+        // 构建Excel数据
+        const excelData = orders.map(order => {
+          // 处理商品信息
+          let productInfo = ''
+          if (order.items && order.items.length > 0) {
+            productInfo = order.items.map(item => {
+              return `${item.title || '未知商品'} x${item.quantity || 1}`
+            }).join('; ')
+          } else if (order.description) {
+            productInfo = order.description
+          } else {
+            productInfo = 'DIY定制商品'
+          }
+
+          return {
+            交易单号: order.transactionId || order.transaction_id || '',
+            商户单号: order.orderNo || order.order_no || '',
+            商户号: order.mchId || order.mch_id || '',
+            发货方式: '快递发货',
+            发货模式: order.status >= 2 ? '已发货' : '未发货',
+            快递公司: order.expressCompany || order.express_company || '默认快递',
+            快递单号: order.trackingNumber || order.tracking_number || '',
+            是否完成发货: order.status >= 2 ? '是' : '否',
+            是否重新发货: '否',
+            商品信息: productInfo
+          }
+        })
+
+        // 创建工作簿
+        const wb = XLSX.utils.book_new()
+        const ws = XLSX.utils.json_to_sheet(excelData)
+
+        // 设置列宽
+        const colWidths = [
+          { wch: 35 }, // 交易单号
+          { wch: 25 }, // 商户单号
+          { wch: 15 }, // 商户号
+          { wch: 12 }, // 发货方式
+          { wch: 12 }, // 发货模式
+          { wch: 15 }, // 快递公司
+          { wch: 30 }, // 快递单号
+          { wch: 15 }, // 是否完成发货
+          { wch: 15 }, // 是否重新发货
+          { wch: 50 }// 商品信息
+        ]
+        ws['!cols'] = colWidths
+
+        // 添加工作表到工作簿
+        XLSX.utils.book_append_sheet(wb, ws, '订单数据')
+
+        // 生成文件名
+        const now = new Date()
+        const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+        const fileName = `订单导出_${dateStr}.xlsx`
+
+        // 下载文件
+        XLSX.writeFile(wb, fileName)
+
+        this.$message.success(`成功导出 ${orders.length} 条订单数据`)
+      } catch (error) {
+        console.error('导出订单失败:', error)
+        this.$message.error('导出订单失败: ' + (error.message || '未知错误'))
+      }
     }
   }
 }

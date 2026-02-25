@@ -168,6 +168,15 @@ export function adminRefund (orderId, adminPhone) {
   })
 }
 
+// 导出订单（支持按条件筛选）
+export function exportOrders (params = {}) {
+  return request({
+    url: '/admin/order/export',
+    method: 'get',
+    params
+  })
+}
+
 // 上传客服二维码
 export function uploadCustomerServiceQR (file) {
   const formData = new FormData()
