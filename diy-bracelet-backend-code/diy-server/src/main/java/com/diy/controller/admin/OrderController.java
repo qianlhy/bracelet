@@ -146,6 +146,7 @@ public class OrderController {
                         .price(orderItem.getPrice())
                         .quantity(orderItem.getQuantity())
                         .productImage(orderItem.getProductImage())
+                        .diyData(orderItem.getDiyData())  // 添加DIY数据
                         .build();
                 items.add(detailItem);
             }

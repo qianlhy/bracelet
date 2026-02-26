@@ -123,5 +123,8 @@ public class OrderDetailAdminVO implements Serializable {
         
         @ApiModelProperty("商品图片URL")
         private String productImage;
+        
+        @ApiModelProperty("DIY数据（JSON格式）")
+        private String diyData;
     }
 }

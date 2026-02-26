@@ -3,10 +3,10 @@
 <mapper namespace="com.diy.mapper.OrderDetailMapper">
 
     <insert id="insertBatch" parameterType="java.util.List">
-        insert into order_item(order_id, product_id, title, price, quantity, product_image)
+        insert into order_item(order_id, product_id, title, price, quantity, product_image, diy_data)
         values
         <foreach collection="orderItemList" item="item" separator=",">
-            (#{item.orderId}, #{item.productId}, #{item.title}, #{item.price}, #{item.quantity}, #{item.productImage})
+            (#{item.orderId}, #{item.productId}, #{item.title}, #{item.price}, #{item.quantity}, #{item.productImage}, #{item.diyData})
         </foreach>
     </insert>
 </mapper>

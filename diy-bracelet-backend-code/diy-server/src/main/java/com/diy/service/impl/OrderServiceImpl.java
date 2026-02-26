@@ -110,6 +110,7 @@ public class OrderServiceImpl implements OrderService {
                             .price(price)
                             .quantity(quantity)
                             .productImage(imageUrl)
+                            .diyData(diyData)  // 保存DIY数据
                             .build();
                     orderItems.add(orderItem);
                 } catch (Exception e) {
@@ -142,6 +143,7 @@ public class OrderServiceImpl implements OrderService {
                         .price(product.getPrice())
                         .quantity(quantity)
                         .productImage(product.getCoverImage())
+                        .diyData(null)  // 普通商品没有DIY数据
                         .build();
                 orderItems.add(orderItem);
             }
@@ -236,6 +238,7 @@ public class OrderServiceImpl implements OrderService {
                             .price(price)
                             .quantity(quantity)
                             .productImage(imageUrl)
+                            .diyData(diyData)  // 保存DIY数据
                             .build();
                     orderItems.add(orderItem);
                     log.info("添加DIY订单项: title={}, price={}, quantity={}", title, price, quantity);
@@ -269,6 +272,7 @@ public class OrderServiceImpl implements OrderService {
                         .price(product.getPrice())
                         .quantity(quantity)
                         .productImage(product.getCoverImage())
+                        .diyData(null)  // 普通商品没有DIY数据
                         .build();
                 orderItems.add(orderItem);
                 log.info("添加订单项: title={}, price={}, quantity={}", product.getTitle(), product.getPrice(), quantity);

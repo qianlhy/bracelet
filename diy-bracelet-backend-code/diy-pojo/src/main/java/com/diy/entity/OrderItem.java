@@ -38,4 +38,7 @@ public class OrderItem implements Serializable {
 
     //商品图片URL（下单时快照）
     private String productImage;
+
+    //DIY数据（JSON格式，用于DIY商品）
+    private String diyData;
 }

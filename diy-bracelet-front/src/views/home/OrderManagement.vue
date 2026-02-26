@@ -166,10 +166,34 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column prop="title" label="商品名称" min-width="200">
+          <el-table-column prop="title" label="商品名称" min-width="280">
             <template slot-scope="scope">
               <div class="product-title">{{ scope.row.title }}</div>
               <div class="product-desc" v-if="scope.row.description">{{ scope.row.description }}</div>
+              <!-- DIY信息展示 - 按珠子分组显示数量，方便库员出货 -->
+              <div class="diy-info-inline" v-if="scope.row.diyData && scope.row.diyData.trim() !== ''">
+                <div class="diy-badge">DIY定制</div>
+                <div class="diy-details-inline">
+                  <span class="diy-detail-item" v-if="getDiyData(scope.row).beadCount">
+                    <i class="el-icon-s-goods"></i> 共{{ getDiyData(scope.row).beadCount }}颗
+                  </span>
+                  <span class="diy-detail-item" v-if="getDiyData(scope.row).selectedSize">
+                    <i class="el-icon-ruler"></i> {{ getDiyData(scope.row).selectedSize }}cm
+                  </span>
+                  <span class="diy-detail-item" v-if="getDiyData(scope.row).wearStyle">
+                    <i class="el-icon-refresh"></i> {{ getDiyData(scope.row).wearStyle === 'double' ? '双圈' : '单圈' }}
+                  </span>
+                </div>
+                <!-- 珠子清单 - 按名称分组显示数量 -->
+                <div class="diy-beads-list" v-if="getDiyData(scope.row).beads && getDiyData(scope.row).beads.length > 0">
+                  <div class="diy-beads-title">出货清单：</div>
+                  <div class="diy-beads-items">
+                    <span v-for="(beadInfo, bIndex) in getGroupedBeads(getDiyData(scope.row).beads)" :key="bIndex" class="diy-bead-tag-with-count">
+                      {{ beadInfo.title }}<span class="bead-count">×{{ beadInfo.count }}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
             </template>
           </el-table-column>
           <el-table-column prop="price" label="单价" width="120" align="right">
@@ -441,6 +465,34 @@ export default {
       if (full) return full
       const parts = [order.receiverProvince, order.receiverCity, order.receiverDistrict, order.receiverDetail]
       return parts.filter(Boolean).join(' ')
+    },
+    // 获取DIY数据（用于表格内联展示）
+    getDiyData (item) {
+      if (!item || !item.diyData) return {}
+      try {
+        return JSON.parse(item.diyData)
+      } catch (e) {
+        return {}
+      }
+    },
+    // 按珠子名称和尺寸分组统计数量，方便库员出货
+    getGroupedBeads (beads) {
+      if (!beads || !Array.isArray(beads)) return []
+      const grouped = {}
+      beads.forEach(bead => {
+        // 根据名称和尺寸生成唯一key，区分不同尺寸的同款珠子
+        const size = bead.size || bead.spec || ''
+        const title = bead.title || '未知珠子'
+        const key = size ? `${title} ${size}mm` : title
+        if (!grouped[key]) {
+          grouped[key] = {
+            title: key,
+            count: 0
+          }
+        }
+        grouped[key].count++
+      })
+      return Object.values(grouped)
     },
     async viewOrder (order) {
       try {
@@ -821,6 +873,83 @@ export default {
 
 ::v-deep .order-detail-dialog .el-card__body {
   padding: 20px;
+}
+
+/* DIY信息内联样式 */
+.diy-info-inline {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #f0f9ff;
+  border-radius: 4px;
+  border-left: 3px solid #409eff;
+}
+
+.diy-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #409eff;
+  color: #fff;
+  font-size: 11px;
+  border-radius: 3px;
+  margin-bottom: 8px;
+}
+
+.diy-details-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.diy-detail-item {
+  font-size: 12px;
+  color: #606266;
+}
+
+.diy-detail-item i {
+  color: #409eff;
+  margin-right: 3px;
+}
+
+/* 出货清单样式 */
+.diy-beads-list {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #b3d8ff;
+}
+
+.diy-beads-title {
+  font-size: 12px;
+  color: #303133;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.diy-beads-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.diy-bead-tag-with-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: #fff;
+  border: 1px solid #409eff;
+  color: #303133;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.bead-count {
+  margin-left: 4px;
+  padding: 1px 6px;
+  background: #409eff;
+  color: #fff;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: bold;
 }
 
 .el-table {
