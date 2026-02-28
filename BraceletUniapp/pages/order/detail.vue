@@ -81,8 +81,16 @@
     <!-- 金额汇总 -->
     <view class="card summary">
       <view class="line">
-        <text>金额</text>
-        <text class="amount">¥{{ detail.amount }}</text>
+        <text>商品金额</text>
+        <text>¥{{ goodsAmount }}</text>
+      </view>
+      <view class="line" v-if="shippingFee > 0">
+        <text>运费</text>
+        <text>¥{{ shippingFee }}</text>
+      </view>
+      <view class="line total">
+        <text>订单总金额</text>
+        <text class="amount">¥{{ totalAmount }}</text>
       </view>
     </view>
 
@@ -94,7 +102,7 @@
 
     <!-- 底部操作栏 -->
     <view class="bar">
-      <view class="total">应付：<text class="money">¥{{ detail.amount }}</text></view>
+      <view class="total">应付：<text class="money">¥{{ totalAmount }}</text></view>
       <view class="btn-group">
         <button v-if="detail.status===0" class="btn cancel-btn" @click="handleCancelOrder">取消订单</button>
         <button v-if="detail.status===0" class="btn pay-btn" @click="pay">去支付</button>
@@ -119,6 +127,29 @@ import { handleOrderPayment } from '../../utils/paymentHelper.js'
 const detail = ref(null)
 const loading = ref(true)
 let oid = ''
+
+// 判断是否是新疆、西藏地址
+const isRemoteArea = computed(() => {
+  if (!detail.value) return false
+  const province = detail.value.receiverProvince || ''
+  return province.includes('新疆') || province.includes('西藏')
+})
+
+// 运费
+const shippingFee = computed(() => {
+  return isRemoteArea.value ? 15 : 0
+})
+
+// 商品金额
+const goodsAmount = computed(() => {
+  if (!detail.value) return 0
+  return Number(detail.value.amount) || 0
+})
+
+// 订单总金额（商品金额 + 运费）
+const totalAmount = computed(() => {
+  return goodsAmount.value + shippingFee.value
+})
 
 // 计算显示的材料列表
 const displayMaterials = computed(() => {
@@ -576,7 +607,9 @@ onLoad(async (options) => {
 
 /* 汇总信息 */
 .summary { padding: 24rpx; }
-.line { display: flex; justify-content: space-between; align-items: center; font-size: 28rpx; }
+.line { display: flex; justify-content: space-between; align-items: center; font-size: 28rpx; margin-bottom: 16rpx; }
+.line:last-child { margin-bottom: 0; }
+.line.total { border-top: 1rpx solid #eee; padding-top: 16rpx; margin-top: 8rpx; }
 .amount { color: #e54d42; font-weight: 700; font-size: 32rpx; }
 
 /* 客服提示 */
