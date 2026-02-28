@@ -1374,35 +1374,74 @@ async function addToCartFromDesign() {
 
   // 已登录，执行加入购物车逻辑
   try {
-    uni.showLoading({ title: '加入中...' })
+    uni.showLoading({ title: '生成设计图中...', mask: true })
 
-    // 计算DIY商品的总价和总数量
+    // 1. 生成设计图
+    const tempFilePath = await generateDesignImage()
+    
+    uni.showLoading({ title: '上传设计图...', mask: true })
+    const uploadRes = await uploadFile(tempFilePath, 'diy_design')
+    
+    // 获取返回的图片路径
+    let rawPath = ''
+    if (typeof uploadRes === 'string') {
+      rawPath = uploadRes
+    } else if (uploadRes) {
+      rawPath = uploadRes.url || uploadRes.path || uploadRes.fileUrl || uploadRes.fileName || ''
+      if (!rawPath && uploadRes.data) {
+        rawPath = uploadRes.data.url || uploadRes.data.path || ''
+      }
+    }
+    
+    // 确保是完整的URL
+    const designImageUrl = rawPath ? resolveImageUrl(rawPath) : ''
+
+    // 2. 计算DIY商品的总价和总数量
     const diyTotalPrice = beads.value.reduce((sum, bead) => sum + Number(bead.price || 0), 0)
     const diyBeadCount = beads.value.length
 
-    // 使用第一个珠子的信息
-    const firstBead = beads.value[0]
+    // 3. 生成详细的珠子排列描述
+    let beadDescription = ''
+    if (beads.value.length > 0) {
+      beadDescription = '顺时针从顶部到最后一颗描述为：'
+      beads.value.forEach((b, index) => {
+        const num = index + 1
+        const name = b.name || b.title || '未知珠子'
+        const size = b.size ? `(${b.size}mm)` : ''
+        beadDescription += `第${num}颗：${name}${size}`
+        if (index < beads.value.length - 1) {
+          beadDescription += '，'
+        }
+      })
+    }
 
-    // 构建DIY设计数据
+    // 4. 构建带位置的珠子数据（保留原始顺序）
+    const beadsWithPosition = beads.value.map((b, index) => ({
+      position: index + 1,
+      productId: b.productId,
+      title: b.title,
+      name: b.name,
+      price: b.price,
+      size: b.size,
+      color: b.color,
+      imageUrl: b.imageUrl
+    }))
+
+    // 5. 构建DIY设计数据
     const diyData = JSON.stringify({
       title: `DIY设计（${diyBeadCount}颗珠子）`,
       price: diyTotalPrice,
-      imageUrl: firstBead.imageUrl || '',
-      color: firstBead.color || '#e8e8e8',
+      imageUrl: designImageUrl,  // 使用生成的设计图
+      color: beads.value[0]?.color || '#e8e8e8',
       size: selectedSize.value,
       beadCount: diyBeadCount,
-      beads: beads.value.map(b => ({
-        productId: b.productId,
-        title: b.title,
-        price: b.price,
-        size: b.size,
-        color: b.color,
-        imageUrl: b.imageUrl
-      }))
+      description: beadDescription,  // 添加珠子顺序描述
+      beads: beadsWithPosition  // 带位置的珠子数据
     })
 
-    // 调用API添加DIY设计到购物车
-    // productId传0表示DIY设计
+    uni.showLoading({ title: '加入中...', mask: true })
+
+    // 6. 调用API添加DIY设计到购物车
     await addToCart(0, 1, diyData)
 
     uni.hideLoading()

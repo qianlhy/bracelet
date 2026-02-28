@@ -207,6 +207,18 @@
               <span class="subtotal-text">¥{{ (scope.row.price * scope.row.quantity).toFixed(2) }}</span>
             </template>
           </el-table-column>
+          <el-table-column label="操作" width="100" align="center">
+            <template slot-scope="scope">
+              <el-button
+                v-if="isDiyItem(scope.row)"
+                type="primary"
+                size="mini"
+                @click="showDiyDetail(scope.row)"
+              >
+                查看DIY
+              </el-button>
+            </template>
+          </el-table-column>
         </el-table>
       </el-card>
 
@@ -238,6 +250,97 @@
       <div slot="footer" class="dialog-footer">
         <el-button @click="updateStatusDialogVisible = false">取 消</el-button>
         <el-button type="primary" @click="updateOrderStatus">确 定</el-button>
+      </div>
+    </el-dialog>
+
+    <!-- DIY详情弹窗 -->
+    <el-dialog title="DIY定制详情" :visible.sync="diyDetailDialogVisible" width="700px" class="diy-detail-dialog">
+      <div v-if="currentDiyItem" class="diy-detail-content">
+        <!-- DIY设计图 -->
+        <div class="diy-image-section">
+          <div class="section-title">设计效果图</div>
+          <div class="diy-image-wrapper">
+            <el-image
+              v-if="getDiyData(currentDiyItem).imageUrl"
+              :src="getImageUrl(getDiyData(currentDiyItem).imageUrl)"
+              style="width: 300px; height: 300px; border-radius: 8px;"
+              fit="contain"
+              :preview-src-list="[getImageUrl(getDiyData(currentDiyItem).imageUrl)]"
+            >
+            </el-image>
+            <div v-else class="no-diy-image">
+              <i class="el-icon-picture-outline"></i>
+              <span>暂无设计图</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 手链信息 -->
+        <div class="diy-info-section">
+          <div class="section-title">手链信息</div>
+          <div class="diy-info-grid">
+            <div class="info-item">
+              <span class="info-label">手链尺寸：</span>
+              <span class="info-value">{{ getDiyData(currentDiyItem).size || getDiyData(currentDiyItem).selectedSize || '-' }} cm</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">珠子总数：</span>
+              <span class="info-value">{{ getDiyData(currentDiyItem).beadCount || getDiyData(currentDiyItem).beads?.length || '-' }} 颗</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">DIY价格：</span>
+              <span class="info-value price">¥{{ getDiyData(currentDiyItem).price || currentDiyItem.price }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 制作说明 -->
+        <div class="diy-description-section" v-if="getDiyData(currentDiyItem).description">
+          <div class="section-title">制作说明</div>
+          <div class="description-content">
+            {{ getDiyData(currentDiyItem).description }}
+          </div>
+        </div>
+
+        <!-- 珠子清单（按顺序） -->
+        <div class="diy-beads-section" v-if="getDiyData(currentDiyItem).beads && getDiyData(currentDiyItem).beads.length > 0">
+          <div class="section-title">珠子清单（按顺序）</div>
+          <div class="beads-table-wrapper">
+            <el-table :data="getDiyData(currentDiyItem).beads" size="small" border style="width: 100%">
+              <el-table-column type="index" label="序号" width="60" align="center">
+                <template slot-scope="scope">
+                  <span class="bead-position">{{ scope.row.position || scope.$index + 1 }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="珠子图片" width="80" align="center">
+                <template slot-scope="scope">
+                  <el-image
+                    v-if="scope.row.imageUrl"
+                    :src="getImageUrl(scope.row.imageUrl)"
+                    style="width: 50px; height: 50px; border-radius: 4px;"
+                    fit="cover"
+                  >
+                  </el-image>
+                  <div v-else class="no-bead-image">-</div>
+                </template>
+              </el-table-column>
+              <el-table-column prop="title" label="珠子名称" min-width="150"></el-table-column>
+              <el-table-column prop="size" label="尺寸" width="80" align="center">
+                <template slot-scope="scope">
+                  {{ scope.row.size }}mm
+                </template>
+              </el-table-column>
+              <el-table-column prop="price" label="单价" width="80" align="right">
+                <template slot-scope="scope">
+                  ¥{{ scope.row.price }}
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </div>
+      </div>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="diyDetailDialogVisible = false" size="medium">关 闭</el-button>
       </div>
     </el-dialog>
 
@@ -291,7 +394,9 @@ export default {
       trackingNumber: '',
       refundDialogVisible: false,
       refundAdminPhone: '',
-      refundOrder: null
+      refundOrder: null,
+      diyDetailDialogVisible: false,
+      currentDiyItem: null
     }
   },
   created () {
@@ -493,6 +598,17 @@ export default {
         grouped[key].count++
       })
       return Object.values(grouped)
+    },
+    // 判断是否为DIY商品
+    isDiyItem (item) {
+      if (!item) return false
+      // 根据diyData字段判断
+      return !!(item.diyData && item.diyData.trim() !== '')
+    },
+    // 显示DIY详情弹窗
+    showDiyDetail (item) {
+      this.currentDiyItem = item
+      this.diyDetailDialogVisible = true
     },
     async viewOrder (order) {
       try {
@@ -950,6 +1066,121 @@ export default {
   border-radius: 3px;
   font-size: 11px;
   font-weight: bold;
+}
+
+/* DIY详情弹窗样式 */
+::v-deep .diy-detail-dialog .el-dialog__body {
+  padding: 20px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.diy-detail-content {
+  .section-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #303133;
+    margin-bottom: 15px;
+    padding-left: 10px;
+    border-left: 4px solid #409eff;
+  }
+
+  .diy-image-section {
+    text-align: center;
+    margin-bottom: 25px;
+
+    .diy-image-wrapper {
+      display: inline-block;
+      padding: 15px;
+      background: #f5f7fa;
+      border-radius: 8px;
+    }
+
+    .no-diy-image {
+      width: 300px;
+      height: 300px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #f5f7fa;
+      border-radius: 8px;
+      color: #909399;
+
+      i {
+        font-size: 48px;
+        margin-bottom: 10px;
+      }
+    }
+  }
+
+  .diy-info-section {
+    margin-bottom: 25px;
+
+    .diy-info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      padding: 15px;
+      background: #f5f7fa;
+      border-radius: 8px;
+
+      .info-item {
+        text-align: center;
+
+        .info-label {
+          color: #606266;
+          font-size: 13px;
+        }
+
+        .info-value {
+          color: #303133;
+          font-size: 14px;
+          font-weight: 500;
+          margin-left: 5px;
+
+          &.price {
+            color: #f56c6c;
+            font-weight: 600;
+          }
+        }
+      }
+    }
+  }
+
+  .diy-description-section {
+    margin-bottom: 25px;
+
+    .description-content {
+      padding: 15px;
+      background: #f5f7fa;
+      border-radius: 8px;
+      line-height: 1.8;
+      color: #303133;
+      font-size: 14px;
+    }
+  }
+
+  .diy-beads-section {
+    .beads-table-wrapper {
+      .bead-position {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        line-height: 24px;
+        text-align: center;
+        background: #409eff;
+        color: #fff;
+        border-radius: 50%;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .no-bead-image {
+        color: #c0c4cc;
+      }
+    }
+  }
 }
 
 .el-table {
