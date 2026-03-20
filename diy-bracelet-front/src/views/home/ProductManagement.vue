@@ -592,6 +592,7 @@ export default {
 
 .el-table {
   flex: 1;
+  overflow-y: auto;
 }
 
 .avatar-uploader .el-upload {
