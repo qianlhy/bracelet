@@ -59,6 +59,10 @@
     {
       "path": "pages/customer-service/index",
       "style": {"navigationBarTitleText": "联系客服"}
+    },
+    {
+      "path": "pages/kuaidi/query",
+      "style": {"navigationBarTitleText": "快递查询"}
     }
   ],
   "tabBar": {

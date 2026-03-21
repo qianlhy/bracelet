@@ -29,8 +29,6 @@
             <view class="copy-tag" @click.stop="copyText(o.trackingNumber || o.tracking_number)">复制</view>
           </view>
           <view class="actions">
-            <view class="tip" v-if="o.status === 4" style="color: #ff9800;">如等待时间过长请加客服了解</view>
-            <view class="tip" v-else>联系客服具体了解商品详情</view>
             <!-- 状态 0:待支付, 1:已支付(待发货), 2:已发货, 3:已完成, 4:退款审核中, 5:退款中, 6:已退款 -->
             <view class="btn-cancel" v-if="o.status === 0" @click.stop="handleCancel(o)">取消订单</view>
             <view class="btn-pay" v-if="o.status === 0" @click.stop="handlePay(o)">去支付</view>
@@ -48,10 +46,10 @@
 </template>
 
 <script setup>
+import { onHide, onLoad, onPullDownRefresh, onReachBottom, onShow, onUnload } from '@dcloudio/uni-app'
 import { ref } from 'vue'
-import { orderList, refundOrder, cancelOrder, payOrder } from '../../api/index.js'
+import { cancelOrder, orderList, payOrder, refundOrder } from '../../api/index.js'
 import { resolveImageUrl } from '../../utils/imageHelper.js'
-import { onShow, onLoad, onPullDownRefresh, onReachBottom, onUnload, onHide } from '@dcloudio/uni-app'
 
 const orders = ref([])
 const page = ref(1)

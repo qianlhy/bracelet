@@ -553,3 +553,29 @@ export const designOrderCreate = createDiyOrder
 export function getCustomerServiceQRCode() {
   return get('/user/common/customer-service-qr', {}, false)
 }
+
+// ==================== 快递查询模块 ====================
+
+/**
+ * 查询快递物流信息
+ * @param {String} num 快递单号（必填）
+ * @param {String} com 快递公司编码（可选，不传则自动识别）
+ * @returns {Promise} { message, state, stateDesc, isSign, com, num, data: [] }
+ */
+export function queryKuaidi(num, com = '') {
+  const params = { num }
+  if (com) {
+    params.com = com
+  }
+  return get('/user/kuaidi/query', params)
+    .then(res => res || {})
+}
+
+/**
+ * 获取支持的快递公司列表
+ * @returns {Promise} { key: value } 快递公司编码和名称映射
+ */
+export function getKuaidiCompanies() {
+  return get('/user/kuaidi/companies', {}, false)
+    .then(res => res || {})
+}

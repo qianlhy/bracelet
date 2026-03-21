@@ -94,10 +94,15 @@
       </view>
     </view>
 
-    <!-- 客服提示 -->
-    <view class="card service-tip">
-      <view class="tip-text" v-if="detail.status === 4" style="color: #ff9800;">如等待时间过长请加客服了解</view>
-      <view class="tip-text" v-else>联系客服具体了解商品详情</view>
+    <!-- 物流信息按钮 -->
+    <view class="card service-tip" v-if="detail.trackingNumber || detail.tracking_number">
+      <view 
+        class="logistics-btn" 
+        @click="goToLogistics"
+      >
+        <text class="logistics-icon">🚚</text>
+        <text class="logistics-text">物流信息</text>
+      </view>
     </view>
 
     <!-- 底部操作栏 -->
@@ -240,6 +245,18 @@ function copyText(text) {
     success: () => {
       uni.showToast({ title: '复制成功', icon: 'none' })
     }
+  })
+}
+
+// 跳转到物流查询页面
+function goToLogistics() {
+  const trackingNum = detail.value.trackingNumber || detail.value.tracking_number
+  if (!trackingNum) {
+    uni.showToast({ title: '暂无物流信息', icon: 'none' })
+    return
+  }
+  uni.navigateTo({
+    url: `/pages/kuaidi/query?num=${trackingNum}`
   })
 }
 
@@ -613,8 +630,28 @@ onLoad(async (options) => {
 .amount { color: #e54d42; font-weight: 700; font-size: 32rpx; }
 
 /* 客服提示 */
-.service-tip { background: #fff; text-align: center; padding: 24rpx; display: flex; justify-content: center; align-items: center; }
+.service-tip { background: #fff; text-align: center; padding: 24rpx; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16rpx; }
 .tip-text { color: #999; font-size: 24rpx; width: 100%; text-align: center; }
+
+/* 物流信息按钮 */
+.logistics-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  padding: 16rpx 32rpx;
+  background: linear-gradient(135deg, #f5c93a 0%, #f5a623 100%);
+  border-radius: 32rpx;
+  margin-top: 8rpx;
+}
+.logistics-icon {
+  font-size: 28rpx;
+}
+.logistics-text {
+  font-size: 26rpx;
+  color: #333;
+  font-weight: 500;
+}
 
 /* 底部栏 */
 .bar { 

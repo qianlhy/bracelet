@@ -122,6 +122,19 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-cache</artifactId>
         </dependency>
+
+        <!-- 快递100 SDK -->
+        <dependency>
+            <groupId>com.github.kuaidi100-api</groupId>
+            <artifactId>sdk</artifactId>
+            <version>1.0.11</version>
+        </dependency>
+        <!-- Hutool工具类 -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+            <version>5.8.18</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

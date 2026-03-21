@@ -71,3 +71,7 @@ diy:
     wechatPayCertFilePath: ${sky.wechat.wechatPayCertFilePath:}
     notifyUrl: ${sky.wechat.notifyUrl:https://springboot-gq7m-207364-6-1391651365.sh.run.tcloudbase.com/notify/paySuccess}
     refundNotifyUrl: ${sky.wechat.refundNotifyUrl:https://springboot-gq7m-207364-6-1391651365.sh.run.tcloudbase.com/notify/refundSuccess}
+  # 快递100配置
+  kuaidi100:
+    key: ${sky.kuaidi100.key:AQtFRFEE8459}
+    customer: ${sky.kuaidi100.customer:964095869D796B32D82C1FF95E4F8BA0}
