@@ -77,7 +77,8 @@ public class Kuaidi100Controller {
         try {
             // 构建param参数
             Map<String, Object> paramMap = new HashMap<>();
-            paramMap.put("com", com != null && !com.isEmpty() ? com : "auto"); // 不传则自动识别
+            // 默认使用中通快递，只对接了中通
+            paramMap.put("com", com != null && !com.isEmpty() ? com : "zhongtong");
             paramMap.put("num", num);
             paramMap.put("phone", ""); // 收件人或寄件人手机号后四位
             paramMap.put("from", ""); // 出发地城市
