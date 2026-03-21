@@ -139,11 +139,19 @@ public class DesignServiceImpl implements DesignService {
         // 生成订单号：时间戳 + 用户ID
         String orderNo = "DIY" + System.currentTimeMillis();
 
+        // 加上运费（如果有）
+        BigDecimal shippingFee = BigDecimal.ZERO;
+        if (diyOrderCreateDTO.getShippingFee() != null) {
+            shippingFee = diyOrderCreateDTO.getShippingFee();
+        }
+        BigDecimal finalAmount = totalAmount.add(shippingFee);
+        log.info("DIY订单商品金额: {}, 运费: {}, 总金额: {}", totalAmount, shippingFee, finalAmount);
+
         // 创建订单对象
         Orders order = new Orders();
         order.setOrderNo(orderNo);
         order.setUserId(userId);
-        order.setAmount(totalAmount);
+        order.setAmount(finalAmount);
         order.setStatus(Orders.PENDING_PAYMENT); // 0-待支付
         order.setCreateTime(LocalDateTime.now());
 

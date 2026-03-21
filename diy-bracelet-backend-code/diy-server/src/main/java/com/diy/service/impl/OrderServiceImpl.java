@@ -280,7 +280,14 @@ public class OrderServiceImpl implements OrderService {
         }
 
         String orderNo = "ORD" + System.currentTimeMillis();
-        log.info("生成订单号: {}, 总金额: {}", orderNo, totalAmount);
+        
+        // 加上运费（如果有）
+        BigDecimal shippingFee = BigDecimal.ZERO;
+        if (ordersSubmitDTO != null && ordersSubmitDTO.getShippingFee() != null) {
+            shippingFee = ordersSubmitDTO.getShippingFee();
+        }
+        BigDecimal finalAmount = totalAmount.add(shippingFee);
+        log.info("生成订单号: {}, 商品金额: {}, 运费: {}, 总金额: {}", orderNo, totalAmount, shippingFee, finalAmount);
 
         // 订单封面图：取第一个商品的封面图（用于订单列表展示）
         String orderCoverImage = null;
@@ -291,7 +298,7 @@ public class OrderServiceImpl implements OrderService {
         Orders order = Orders.builder()
                 .userId(userId)
                 .orderNo(orderNo)
-                .amount(totalAmount)
+                .amount(finalAmount)
                 .status(Orders.PENDING_PAYMENT)
                 .createTime(LocalDateTime.now())
                 .productImage(orderCoverImage)

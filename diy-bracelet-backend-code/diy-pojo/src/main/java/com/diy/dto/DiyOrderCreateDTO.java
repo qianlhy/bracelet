@@ -67,6 +67,11 @@ public class DiyOrderCreateDTO implements Serializable {
      */
     private List<DiyOrderItem> items;
     
+    /**
+     * 运费（可选，新疆西藏等偏远地区需要加运费）
+     */
+    private java.math.BigDecimal shippingFee;
+    
     @Data
     public static class DiyOrderItem implements Serializable {
         /**

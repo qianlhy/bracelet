@@ -32,4 +32,7 @@ public class OrdersSubmitDTO implements Serializable {
     
     // 详细地址（非必填，用于直接传递收件人信息）
     private String receiverDetail;
+    
+    // 运费（可选，新疆西藏等偏远地区需要加运费）
+    private java.math.BigDecimal shippingFee;
 }

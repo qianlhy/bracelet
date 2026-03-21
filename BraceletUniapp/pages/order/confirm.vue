@@ -328,7 +328,10 @@ async function submitOrder() {
         diyImage: designImage.value,
         diyName: diyName.value || '我的设计',
         description: desc.trim(),
-        designId: 0
+        designId: 0,
+        
+        // 运费（新疆西藏等偏远地区）
+        shippingFee: shippingFee.value
       })
     } else if (orderMode.value === 'direct') {
       // 直接购买：先清空购物车，确保只购买当前商品
@@ -355,7 +358,8 @@ async function submitOrder() {
         receiverCity: selectedAddress.value.city,
         receiverDistrict: selectedAddress.value.district,
         receiverDetail: selectedAddress.value.detail,
-        remark: remark.value || '直接购买订单'
+        remark: remark.value || '直接购买订单',
+        shippingFee: shippingFee.value
       })
     } else {
       res = await orderCreate({
@@ -365,7 +369,8 @@ async function submitOrder() {
         receiverProvince: selectedAddress.value.province,
         receiverCity: selectedAddress.value.city,
         receiverDistrict: selectedAddress.value.district,
-        receiverDetail: selectedAddress.value.detail
+        receiverDetail: selectedAddress.value.detail,
+        shippingFee: shippingFee.value
       })
     }
     
