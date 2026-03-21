@@ -559,13 +559,17 @@ export function getCustomerServiceQRCode() {
 /**
  * 查询快递物流信息
  * @param {String} num 快递单号（必填）
- * @param {String} com 快递公司编码（可选，不传则自动识别）
+ * @param {String} com 快递公司编码（可选，不传则默认中通）
+ * @param {String} phone 收件人手机号（可选，中通查询需要）
  * @returns {Promise} { message, state, stateDesc, isSign, com, num, data: [] }
  */
-export function queryKuaidi(num, com = '') {
+export function queryKuaidi(num, com = '', phone = '') {
   const params = { num }
   if (com) {
     params.com = com
+  }
+  if (phone) {
+    params.phone = phone
   }
   return get('/user/kuaidi/query', params)
     .then(res => res || {})

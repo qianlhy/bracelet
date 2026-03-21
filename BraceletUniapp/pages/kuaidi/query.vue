@@ -97,6 +97,7 @@ import { computed, onMounted, ref } from 'vue'
 
 // 响应式数据
 const trackingNumber = ref('')
+const phone = ref('')  // 收件人手机号
 const loading = ref(false)
 const kuaidiInfo = ref(null)
 const errorMsg = ref('')
@@ -108,6 +109,7 @@ const isFromOrder = ref(false)  // 是否从订单页面跳转过来
 onLoad((options) => {
   if (options && options.num) {
     trackingNumber.value = options.num
+    phone.value = options.phone || ''  // 接收手机号
     isFromOrder.value = true  // 标记为从订单页面跳转
     // 自动查询
     queryKuaidiInfo()
@@ -171,7 +173,7 @@ async function queryKuaidiInfo() {
   kuaidiInfo.value = null
 
   try {
-    const result = await queryKuaidi(trackingNumber.value.trim(), selectedCompany.value)
+    const result = await queryKuaidi(trackingNumber.value.trim(), selectedCompany.value, phone.value)
     console.log('快递查询结果:', result)
     
     if (result) {

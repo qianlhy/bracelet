@@ -145,15 +145,15 @@ const shippingFee = computed(() => {
   return isRemoteArea.value ? 15 : 0
 })
 
-// 商品金额
-const goodsAmount = computed(() => {
+// 订单总金额（从数据库读取，已包含运费）
+const totalAmount = computed(() => {
   if (!detail.value) return 0
   return Number(detail.value.amount) || 0
 })
 
-// 订单总金额（商品金额 + 运费）
-const totalAmount = computed(() => {
-  return goodsAmount.value + shippingFee.value
+// 商品金额（订单总金额 - 运费）
+const goodsAmount = computed(() => {
+  return totalAmount.value - shippingFee.value
 })
 
 // 计算显示的材料列表
@@ -251,12 +251,13 @@ function copyText(text) {
 // 跳转到物流查询页面
 function goToLogistics() {
   const trackingNum = detail.value.trackingNumber || detail.value.tracking_number
+  const phone = detail.value.receiverPhone || detail.value.receiver_phone || ''
   if (!trackingNum) {
     uni.showToast({ title: '暂无物流信息', icon: 'none' })
     return
   }
   uni.navigateTo({
-    url: `/pages/kuaidi/query?num=${trackingNum}`
+    url: `/pages/kuaidi/query?num=${trackingNum}&phone=${phone}`
   })
 }
 

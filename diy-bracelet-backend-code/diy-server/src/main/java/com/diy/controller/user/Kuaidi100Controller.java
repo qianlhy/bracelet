@@ -40,12 +40,12 @@ public class Kuaidi100Controller {
     private static final String QUERY_URL = "https://poll.kuaidi100.com/poll/query.do";
 
     /**
-     * 计算MD5签名
+     * 计算MD5签名（使用UTF-8编码）
      */
     private String md5(String str) {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] bytes = md.digest(str.getBytes());
+            byte[] bytes = md.digest(str.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             StringBuilder sb = new StringBuilder();
             for (byte b : bytes) {
                 String hex = Integer.toHexString(b & 0xFF);
@@ -65,14 +65,16 @@ public class Kuaidi100Controller {
      *
      * @param com 快递公司编码
      * @param num 快递单号
+     * @param phone 收件人手机号（中通查询需要）
      * @return 物流信息
      */
     @GetMapping("/query")
     @ApiOperation("查询快递物流信息")
     public Result<Kuaidi100VO> queryTrack(
-            @ApiParam("快递公司编码，如：yuantong、sf、sto等，不传则自动识别") @RequestParam(required = false) String com,
-            @ApiParam("快递单号") @RequestParam String num) {
-        log.info("查询快递物流信息：com={}, num={}", com, num);
+            @ApiParam("快递公司编码，如：yuantong、sf、sto等，不传则默认中通") @RequestParam(required = false) String com,
+            @ApiParam("快递单号") @RequestParam String num,
+            @ApiParam("收件人手机号") @RequestParam(required = false) String phone) {
+        log.info("查询快递物流信息：com={}, num={}, phone={}", com, num, phone);
 
         try {
             // 构建param参数
@@ -80,7 +82,9 @@ public class Kuaidi100Controller {
             // 默认使用中通快递，只对接了中通
             paramMap.put("com", com != null && !com.isEmpty() ? com : "zhongtong");
             paramMap.put("num", num);
-            paramMap.put("phone", ""); // 收件人或寄件人手机号后四位
+            // 中通查询需要手机号，取后11位（或全部）
+            String phoneParam = phone != null && !phone.isEmpty() ? phone : "";
+            paramMap.put("phone", phoneParam); // 收件人或寄件人手机号
             paramMap.put("from", ""); // 出发地城市
             paramMap.put("to", ""); // 目的地城市
             paramMap.put("resultv2", "0"); // 返回数据格式
