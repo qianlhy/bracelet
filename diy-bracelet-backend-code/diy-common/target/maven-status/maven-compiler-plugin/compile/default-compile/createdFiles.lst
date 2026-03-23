@@ -18,11 +18,9 @@ com\diy\utils\WxCloudStorageUtil.class
 com\diy\exception\PasswordEditFailedException.class
 com\diy\properties\JwtProperties.class
 com\diy\exception\AccountLockedException.class
-com\diy\utils\WxCloudStorageUtil$MetadataResponse.class
 com\diy\constant\AutoFillConstant.class
 com\diy\constant\MessageConstant.class
 com\diy\exception\BaseException.class
-com\diy\utils\WxCloudStorageUtil$MetadataResponse$RespData.class
 com\diy\exception\ShoppingCartBusinessException.class
 com\diy\exception\AccountNotFoundException.class
 com\diy\properties\WeChatProperties.class

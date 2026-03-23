@@ -115,6 +115,18 @@
       "type": "java.lang.String",
       "description": "地域",
       "sourceType": "com.diy.properties.WxCloudStorageProperties"
+    },
+    {
+      "name": "sky.wxcloud.storage.secret-id",
+      "type": "java.lang.String",
+      "description": "腾讯云 SecretId（自建服务器部署时必填）",
+      "sourceType": "com.diy.properties.WxCloudStorageProperties"
+    },
+    {
+      "name": "sky.wxcloud.storage.secret-key",
+      "type": "java.lang.String",
+      "description": "腾讯云 SecretKey（自建服务器部署时必填）",
+      "sourceType": "com.diy.properties.WxCloudStorageProperties"
     }
   ],
   "hints": []
