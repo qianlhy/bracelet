@@ -22,4 +22,13 @@ public class WxCloudStorageProperties {
      */
     private String region;
 
+    /**
+     * 腾讯云 SecretId（自建服务器部署时必填）
+     */
+    private String secretId;
+
+    /**
+     * 腾讯云 SecretKey（自建服务器部署时必填）
+     */
+    private String secretKey;
 }

@@ -47,7 +47,7 @@ sky:
     # 说明：证书文件已放在项目 certs 文件夹中，包含apiclient_key.pem、apiclient_cert.pem、apiclient_cert.p12
     # 本地开发：使用本地绝对路径（如 E:/code/xxx/apiclient_key.pem）
     # Docker部署：使用容器内路径（/app/certs/apiclient_key.pem）
-    privateKeyFilePath: E:/code/BraceletUniapp(1)/diy-bracelet-backend-code/certs/apiclient_key.pem
+    privateKeyFilePath: D:\WeChatProject\diy\bracelet-master\diy-bracelet-backend-code/certs/apiclient_key.pem
     
     # ---------- APIv3密钥配置（用于敏感信息加解密）----------
     # apiV3Key: APIv3密钥（32位字符串）
@@ -66,7 +66,7 @@ sky:
     weChatPayPublicKeyId: PUB_KEY_ID_0117343481202025120300381767000202
     # 本地开发：使用本地绝对路径（如 E:/code/xxx/pub_key.pem）
     # Docker部署：使用容器内路径（/app/certs/pub_key.pem）
-    weChatPayPublicKeyPath: E:/code/BraceletUniapp(1)/diy-bracelet-backend-code/certs/pub_key.pem
+    weChatPayPublicKeyPath: D:\WeChatProject\diy\bracelet-master\diy-bracelet-backend-code/certs/pub_key.pem
 
     notifyUrl: http://5085a73.r18.vip.cpolar.cn/notify/paySuccess
     
@@ -96,4 +96,4 @@ dev:
 
 local:
   file:
-    base-path: E:/code/diy-bangle/uploads
+    base-path: D:/uploads

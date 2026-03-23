@@ -11,7 +11,7 @@ spring:
   datasource:
     druid:
       driver-class-name: ${sky.datasource.driver-class-name}
-      url: jdbc:mysql://${sky.datasource.host}:${sky.datasource.port}/${sky.datasource.database}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
+      url: jdbc:mysql://${sky.datasource.host}:${sky.datasource.port}/${sky.datasource.database}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
       username: ${sky.datasource.username}
       password: ${sky.datasource.password}
   redis:
@@ -59,6 +59,8 @@ diy:
     storage:
       bucket-name: ${sky.wxcloud.storage.bucket-name}
       region: ${sky.wxcloud.storage.region}
+      secret-id: ${sky.wxcloud.storage.secret-id:}
+      secret-key: ${sky.wxcloud.storage.secret-key:}
   wechat:
     appid: ${sky.wechat.appid:wxcfa41f1d1bc716a8}
     secret: ${sky.wechat.secret:18166e4cdca2a2d1fbfa2fa4db1f6bf4}
