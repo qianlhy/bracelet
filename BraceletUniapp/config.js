@@ -4,11 +4,11 @@
 // 开发环境 - 根据接口文档
 // 统一指向云托管后端地址，方便开发与真机调试
 // const DEV_API_BASE_URL = 'https://cloud.xiaotangstory.top'
-const DEV_API_BASE_URL = 'https://diy.taibo.xin'
+const DEV_API_BASE_URL = 'https://abc.052909.com'
 // const DEV_API_BASE_URL = "http://localhost:8080"
 
 // 生产环境
-const PROD_API_BASE_URL = 'https://diy.taibo.xin'
+const PROD_API_BASE_URL = 'https://abc.052909.com'
 //const PROD_API_BASE_URL = 'https://cloud.xiaotangstory.top'
 
 // 判断当前环境
@@ -27,6 +27,8 @@ export const API_PATHS = {
   // ==================== 用户登录模块 ====================
   // 微信登录
   WECHAT_LOGIN: '/user/user/login',
+  // 查询当前用户信息（用于token失效时恢复登录）
+  USER_INFO: '/user/user/info',
   
   // ==================== 分类模块 ====================
   // 查询分类列表
@@ -114,7 +116,7 @@ export const API_PATHS = {
 }
 
 // 请求超时时间（毫秒）
-export const REQUEST_TIMEOUT = 10000
+export const REQUEST_TIMEOUT = 60000
 
 // 请求头配置
 export const REQUEST_HEADERS = {

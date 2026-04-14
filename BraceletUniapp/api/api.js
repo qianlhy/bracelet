@@ -40,6 +40,33 @@ export function wechatLogin(code, profile = {}) {
     })
 }
 
+/**
+ * 查询当前用户信息（用于token失效时恢复登录）
+ * @returns {Promise} { id, openid, nickname, avatar, token }
+ */
+export function getCurrentUserInfo() {
+  return get(API_PATHS.USER_INFO, {}, false)
+    .then(res => {
+      if (res) {
+        // 更新本地存储
+        try {
+          if (res.token) {
+            uni.setStorageSync(STORAGE_TOKEN_KEY, res.token)
+          }
+          uni.setStorageSync(STORAGE_USER_KEY, {
+            id: res.id,
+            openid: res.openid,
+            nickName: res.nickname,
+            avatarUrl: res.avatar
+          })
+        } catch (e) {
+          console.error('保存用户信息失败:', e)
+        }
+      }
+      return res
+    })
+}
+
 // ==================== 分类模块 ====================
 
 /**

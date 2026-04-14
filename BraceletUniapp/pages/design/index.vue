@@ -631,10 +631,15 @@ function isPendant(bead) {
   return title.endsWith('吊坠')
 }
 
-// 判断是否为花托或隔断（不计算在长度内）
+// 判断是否为配饰（花托、隔片等，不计算在长度内，之间没有间隙）
 function isSpacerOrSeparator(bead) {
   const title = String(bead?.title || '')
-  return title.includes('花托') || title.includes('隔断') || title.includes('隔圈')
+  const spacerKeywords = [
+    '花托', '隔断', '隔圈',
+    '别针十字架流苏', '四圈镶砖', '土星轨迹',
+    '大冰块', '宫廷风魔盒', '沙金盘缠', '沙金隔片', '菱形微片'
+  ]
+  return spacerKeywords.some(keyword => title.includes(keyword))
 }
 
 // 目标珠子数
@@ -676,8 +681,8 @@ const orderItems = computed(() => {
 })
 
 function getBeadArcSizeRpx(bead) {
-  // 吊坠占一小部分空间 (例如 3mm)，避免重叠
-  if (isPendant(bead)) return 3 * 7
+  // 吊坠和配饰都占一小部分空间 (3mm)，避免重叠，之间没有间隙
+  if (isPendant(bead) || isSpacerOrSeparator(bead)) return 3 * 7
   
   const base = Number(bead?.size || 8) * 7
   return base
@@ -762,15 +767,17 @@ const beadLayouts = computed(() => {
     const remainingArc = circumference - totalBeadArc
     
     // 计算有效间隙数量：只有 珠子-珠子 之间才分配间隙
-    // 吊坠前后都紧贴，不分配间隙
+    // 吊坠和配饰前后都紧贴，不分配间隙
     let validGapCount = 0
     
     if (count > 0) {
         for (let i = 0; i < count; i++) {
             const curr = beads.value[i]
             const next = beads.value[(i + 1) % count]
-            // 如果当前和下一个都不是吊坠，则需要分配间隙
-            if (!isPendant(curr) && !isPendant(next)) {
+            // 如果当前和下一个都不是吊坠且都不是配饰，则需要分配间隙
+            const currIsSpecial = isPendant(curr) || isSpacerOrSeparator(curr)
+            const nextIsSpecial = isPendant(next) || isSpacerOrSeparator(next)
+            if (!currIsSpecial && !nextIsSpecial) {
                 validGapCount++
             }
         }
@@ -796,8 +803,10 @@ const beadLayouts = computed(() => {
       const currSize = getBeadArcSizeRpx(currBead)
       
       // 判断是否需要添加间隙
-      // 只有当前一个不是吊坠，且当前也不是吊坠时，才应用 gap
-      const applyGap = (!isPendant(prevBead) && !isPendant(currBead)) ? gap : 0
+      // 只有当前一个不是吊坠且不是配饰，且当前也不是吊坠且不是配饰时，才应用 gap
+      const prevIsSpecial = isPendant(prevBead) || isSpacerOrSeparator(prevBead)
+      const currIsSpecial = isPendant(currBead) || isSpacerOrSeparator(currBead)
+      const applyGap = (!prevIsSpecial && !currIsSpecial) ? gap : 0
 
       // 累加角度
       // 使用弧长计算角度：arc = r1 + r2 + gap
