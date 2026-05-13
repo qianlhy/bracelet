@@ -8,7 +8,9 @@ import com.qcloud.cos.auth.COSCredentials;
 import com.qcloud.cos.model.COSObject;
 import com.qcloud.cos.model.ObjectMetadata;
 import com.qcloud.cos.model.PutObjectRequest;
+import com.qcloud.cos.model.GeneratePresignedUrlRequest;
 import com.qcloud.cos.region.Region;
+import com.qcloud.cos.http.HttpMethodName;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -116,7 +118,7 @@ public class WxCloudStorageUtil {
                     outputStream.write(buffer, 0, bytesRead);
                 }
                 byte[] data = outputStream.toByteArray();
-                log.info("从对象存储下载文件成功: {}，大小={}字节", objectName, data.length);
+                log.info("从对象存储下载文件成功: {},大小={}字节", objectName, data.length);
                 return data;
             }
         } catch (Exception e) {
@@ -149,6 +151,49 @@ public class WxCloudStorageUtil {
             log.info("从对象存储删除文件成功: {}", objectName);
         } catch (Exception e) {
             log.error("从对象存储删除文件失败: {}", objectName, e);
+        } finally {
+            if (cosClient != null) cosClient.shutdown();
+        }
+    }
+
+    /**
+     * 获取对象存储的预签名访问 URL（用于 302 重定向）
+     * 生成的 URL 有效期为 1 小时
+     */
+    public String getDirectUrl(String objectName) {
+        // 标准化对象名称
+        String normalized = objectName.trim();
+        String prefix = "/admin/common/image/";
+        if (normalized.startsWith(prefix)) {
+            normalized = normalized.substring(prefix.length());
+        }
+        if (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+
+        COSClient cosClient = null;
+        try {
+            cosClient = createCOSClient();
+
+            // 生成预签名 URL,有效期 1 小时
+            GeneratePresignedUrlRequest request = new GeneratePresignedUrlRequest(
+                bucketName,
+                normalized,
+                HttpMethodName.GET
+            );
+            // 设置过期时间为 1 小时（3600 秒）
+            request.setExpiration(java.util.Date.from(
+                java.time.Instant.now().plusSeconds(3600)
+            ));
+
+            java.net.URL url = cosClient.generatePresignedUrl(request);
+            log.info("生成预签名 URL: {}", normalized);
+            return url.toString();
+
+        } catch (Exception e) {
+            log.error("生成预签名 URL 失败: {}", normalized, e);
+            // 抛出异常让调用者知道预签名 URL 生成失败，可以回退到直接下载方式
+            throw new RuntimeException("生成预签名 URL 失败: " + e.getMessage(), e);
         } finally {
             if (cosClient != null) cosClient.shutdown();
         }
@@ -236,7 +281,7 @@ public class WxCloudStorageUtil {
             }
             return null;
         } catch (Exception e) {
-            log.warn("获取文件元数据异常，继续上传: {}", e.getMessage());
+            log.warn("获取文件元数据异常,继续上传: {}", e.getMessage());
             return null;
         }
     }

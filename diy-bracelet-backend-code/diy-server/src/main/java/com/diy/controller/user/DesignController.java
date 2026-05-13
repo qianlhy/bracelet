@@ -5,12 +5,14 @@ import com.diy.entity.ColorSeries;
 import com.diy.entity.DiyCategory;
 import com.diy.entity.DiyMaterial;
 import com.diy.entity.Orders;
+import com.diy.result.PageResult;
 import com.diy.result.Result;
 import com.diy.service.DesignService;
 import com.diy.vo.DiyCategoryWithChildrenVO;
 import com.diy.vo.DiyChildCategoryVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -66,7 +68,7 @@ public class DesignController {
             String key = cs.getKeyCode();
             int sep = key.indexOf("__");
             if (sep <= 0) {
-                // 忽略非组合键（历史色系键），避免污染子分类
+                // 忽略非组合键（历史色系键）,避免污染子分类
                 continue;
             }
             String parentKey = key.substring(0, sep);
@@ -88,19 +90,23 @@ public class DesignController {
     }
 
     /**
-     * 查询DIY材料列表（支持分类和色系筛选）
+     * 查询DIY材料列表（支持分类和色系筛选,支持分页）
      *
-     * @param categories  分类键，多个用逗号分隔
-     * @param colorSeries 色系键，多个用逗号分隔
+     * @param categories  分类键,多个用逗号分隔
+     * @param colorSeries 色系键,多个用逗号分隔
+     * @param page        页码,默认1
+     * @param size        每页数量,默认20
      * @return
      */
     @GetMapping("/material/list")
-    @ApiOperation("查询DIY材料列表（含二级分类映射）")
+    @ApiOperation("查询DIY材料列表（含二级分类映射,支持分页）")
     public Result<Map<String, Object>> getMaterialList(
             @RequestParam(required = false) String categories,
-            @RequestParam(required = false) String colorSeries) {
+            @RequestParam(required = false) String colorSeries,
+            @ApiParam(value = "页码", defaultValue = "1") @RequestParam(defaultValue = "1") Integer page,
+            @ApiParam(value = "每页数量", defaultValue = "20") @RequestParam(defaultValue = "20") Integer size) {
 
-        log.info("🔍 收到材料列表请求 - 原始参数 categories: [{}], colorSeries: [{}]", categories, colorSeries);
+        log.info("收到材料列表请求 - 原始参数 categories: [{}], colorSeries: [{}], page: {}, size: {}", categories, colorSeries, page, size);
 
         // 解析筛选参数
         List<String> categoryList = null;
@@ -113,7 +119,7 @@ public class DesignController {
             colorSeriesList = Arrays.asList(colorSeries.split(","));
         }
 
-        // 预取所有启用的色系，供后续“中文名/键值”混合映射与子分类列表使用
+        // 预取所有启用的色系,供后续中文名/键值混合映射与子分类列表使用
         List<ColorSeries> allSeries = designService.getColorSeriesList();
         Map<String, ColorSeries> seriesMap = new HashMap<>();
         for (ColorSeries cs : allSeries) {
@@ -141,7 +147,7 @@ public class DesignController {
                     resolved.add(cs);
                     continue;
                 }
-                // 3) 视为“中文名称”，在指定父类下（如有）或全量中按名称匹配
+                // 3) 视为中文名称,在指定父类下（如有）或全量中按名称匹配
                 if (categoryList != null && !categoryList.isEmpty()) {
                     for (String cat : categoryList) {
                         for (ColorSeries s : allSeries) {
@@ -162,14 +168,18 @@ public class DesignController {
             colorSeriesForQuery = new java.util.ArrayList<>(resolved);
         }
 
-        // 查询材料列表（已按名称+尺寸排序）
-        List<DiyMaterial> materials = designService.getMaterialList(categoryList, colorSeriesForQuery);
+        // 查询材料列表（已按名称+尺寸排序,支持分页）
+        PageResult pageResult = designService.getMaterialList(categoryList, colorSeriesForQuery, page, size);
 
-        // 构建响应：仅返回 materials（子分类由 /user/design/colorSeries/list 获取）
+        // 构建响应：返回 materials、total、page、size
         Map<String, Object> resp = new HashMap<>();
-        resp.put("materials", materials);
+        resp.put("materials", pageResult.getRecords());
+        resp.put("total", pageResult.getTotal());
+        resp.put("page", page);
+        resp.put("size", size);
+        resp.put("totalPages", (pageResult.getTotal() + size - 1) / size);
 
-        log.info("✅ 材料数: {}", materials.size());
+        log.info("材料数: {}, 总数: {}", pageResult.getRecords().size(), pageResult.getTotal());
         return Result.success(resp);
     }
 
@@ -182,7 +192,7 @@ public class DesignController {
     @PostMapping("/order/create")
     @ApiOperation("创建DIY订单")
     public Result<Map<String, Object>> createDiyOrder(@RequestBody DiyOrderCreateDTO diyOrderCreateDTO) {
-        log.info("创建DIY订单，订单项数量: {}", diyOrderCreateDTO.getItems() != null ? diyOrderCreateDTO.getItems().size() : 0);
+        log.info("创建DIY订单,订单项数量: {}", diyOrderCreateDTO.getItems() != null ? diyOrderCreateDTO.getItems().size() : 0);
 
         Orders order = designService.createDiyOrder(diyOrderCreateDTO);
 

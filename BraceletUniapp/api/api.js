@@ -40,6 +40,33 @@ export function wechatLogin(code, profile = {}) {
     })
 }
 
+/**
+ * 查询当前用户信息（用于token失效时恢复登录）
+ * @returns {Promise} { id, openid, nickname, avatar, token }
+ */
+export function getCurrentUserInfo() {
+  return get(API_PATHS.USER_INFO, {}, false)
+    .then(res => {
+      if (res) {
+        // 更新本地存储
+        try {
+          if (res.token) {
+            uni.setStorageSync(STORAGE_TOKEN_KEY, res.token)
+          }
+          uni.setStorageSync(STORAGE_USER_KEY, {
+            id: res.id,
+            openid: res.openid,
+            nickName: res.nickname,
+            avatarUrl: res.avatar
+          })
+        } catch (e) {
+          console.error('保存用户信息失败:', e)
+        }
+      }
+      return res
+    })
+}
+
 // ==================== 分类模块 ====================
 
 /**
@@ -441,58 +468,26 @@ export const getColorSeriesList = getDiyCategoryList
  * 查询DIY材料列表
  * 对应接口: /user/design/material/list
  * @param {Object} params { categories: string, colorSeries: string, page, size }
- * @returns {Promise} { materials: [], totalPages: number }
+ * @returns {Promise} { materials: [], total, page, size, totalPages }
  */
 export function getDiyMaterialList(params = {}) {
   const { categories, colorSeries, page = 1, size = 20 } = params
   const queryParams = { page, size }
-  
+
   // 处理分类参数 (支持数组或逗号分隔字符串)
   if (categories) {
     queryParams.categories = Array.isArray(categories) ? categories.join(',') : categories
   }
-  
+
   // 处理色系/子分类参数
   if (colorSeries) {
     queryParams.colorSeries = Array.isArray(colorSeries) ? colorSeries.join(',') : colorSeries
   }
-  
-  // 保留对 1-8 级分类的兼容支持 (如果还需要的话，根据 optimize query 的指示，主要关注上述两个参数)
-  // 但为了不破坏现有逻辑，如果传入了这些key，还是带上
-  for (let i = 1; i <= 8; i++) {
-    const key = `classificationDetailKey${i}`
-    if (params[key]) {
-      queryParams[key] = params[key]
-    }
-  }
-  
+
   return get(API_PATHS.DIY_MATERIAL_LIST, queryParams, false)
     .then(res => {
-      // 响应结构: Result<Map<string, object>>
-      // 预期 data 中包含 materials 列表
-      const data = res.data || res
-      
-      // 兼容处理：检查 materials 是否存在
-      let materials = []
-      if (Array.isArray(data)) {
-        materials = data
-      } else if (data && Array.isArray(data.materials)) {
-        materials = data.materials
-        materials.totalPages = data.totalPages
-      } else if (data && Array.isArray(data.records)) { // 分页常见字段
-        materials = data.records
-        materials.totalPages = data.pages
-      }
-      
-      // 处理附加的分类详情 (如果有)
-      for (let i = 1; i <= 8; i++) {
-        const detailKey = `classificationDetail${i}`
-        if (data[detailKey]) {
-          materials[detailKey] = data[detailKey]
-        }
-      }
-      
-      return materials
+      // 响应结构: { materials: [], total, page, size, totalPages }
+      return res || { materials: [], total: 0, page, size, totalPages: 0 }
     })
 }
 

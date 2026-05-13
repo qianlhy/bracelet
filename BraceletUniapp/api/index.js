@@ -7,75 +7,40 @@
 
 // ==================== 导入真实后端API ====================
 import {
-  getAddressList,
-  addAddress,
-  deleteAddress,
-  setDefaultAddress,
-  getDefaultAddress
+    addAddress,
+    deleteAddress,
+    getAddressList,
+    getDefaultAddress,
+    setDefaultAddress,
+    wechatLogin
 } from './api.js'
 
 export {
-  // 登录
-  wechatLogin,
-  loginWithWeixinCode,
-  
-  // 分类
-  getCategoryList,
-  categoryList,
-  
-  // 商品
-  getProductList,
-  getProductDetail,
-  productList,
-  productDetail,
-  
-  // 购物车
-  addToCart,
-  getCartList,
-  deleteCartItem,
-  clearCart,
-  subCartItem,
-  cartAdd,
-  cartList,
-  cartDelete,
-  cartUpdate,
-  
-  // 订单
-  submitOrder,
-  createOrderFromCart,
-  payOrder,
-  checkPaymentStatus,
-  getOrderList,
-  getOrderDetail,
-  getHistoryOrders,
-  getOrderDetailById,
-  cancelOrder,
-  completeOrder,
-  repetitionOrder,
-  reminderOrder,
-  orderCreate,
-  orderList,
-  orderDetail,
-  orderPay,
-  refundOrder, // Refund API
-  cancelRefundOrder, // Cancel Refund API
-  
-  // 管理员
-  deliveryOrder,
 
-  // 轮播图
-  getBannerList,
-  bannerList,
-  
-  // 店铺
-  getShopStatus,
-  
-  // 地址管理
-  addAddress,
-  getAddressList,
-  deleteAddress,
-  setDefaultAddress,
-  getDefaultAddress
+    // 地址管理
+    addAddress,
+    // 购物车
+    addToCart, bannerList, cancelOrder, // Refund API
+    cancelRefundOrder, cartAdd, cartDelete, cartList, cartUpdate, categoryList, checkPaymentStatus, clearCart, completeOrder, createOrderFromCart, deleteAddress, deleteCartItem, // Cancel Refund API
+
+
+
+
+
+    // 管理员
+    deliveryOrder, getAddressList,
+    // 轮播图
+    getBannerList, getCartList,
+    // 分类
+    getCategoryList, getCurrentUserInfo, getDefaultAddress, getHistoryOrders, getOrderDetail, getOrderDetailById, getOrderList, getProductDetail,
+    // 商品
+    getProductList,
+    // 店铺
+    getShopStatus, loginWithWeixinCode, orderCreate, orderDetail, orderList, orderPay, payOrder, productDetail, productList, refundOrder, reminderOrder, repetitionOrder, setDefaultAddress, subCartItem,
+    // 订单
+    submitOrder,
+    // 登录
+    wechatLogin
 } from './api.js'
 
 import { STORAGE_TOKEN_KEY, STORAGE_USER_KEY } from '../config.js'
@@ -141,12 +106,9 @@ export const logout = async () => {
 
 // ==================== DIY设计模块（从后端API获取）====================
 // 已迁移到 api.js，这里直接从 api.js 导出
-export { 
-  designCategoryList, 
-  designProductList,
-  uploadFile,
-  createDiyOrder,
-  designOrderCreate
+export {
+    createDiyOrder, designCategoryList, designOrderCreate, designProductList,
+    uploadFile
 } from './api.js'
 
 // ==================== 地址管理适配层 ====================
@@ -216,5 +178,85 @@ export const addressSetDefault = (id) => {
 
 export const addressGetDefault = () => {
   return getDefaultAddress().then(res => fromApiAddress(res))
+}
+
+// ==================== 自动登录功能 ====================
+
+/**
+ * 静默自动登录
+ * 流程：
+ * 1. 检查本地是否有token，有则直接返回
+ * 2. 没有token则调用微信登录获取code
+ * 3. 用code调用后端登录接口，后端会查询数据库是否有该用户
+ * 4. 如果有用户，返回用户信息；如果没有，返回需要授权
+ * @returns {Promise<boolean>} 是否登录成功
+ */
+export const silentAutoLogin = () => {
+  return new Promise((resolve) => {
+    console.log('[SilentLogin] 开始静默自动登录')
+    
+    // 1. 检查本地token
+    const token = tokenGet()
+    console.log('[SilentLogin] 本地token:', token ? '存在' : '不存在')
+    if (token) {
+      console.log('[SilentLogin] 本地已有token，无需登录')
+      resolve(true)
+      return
+    }
+    
+    // 2. 调用微信登录获取code
+    console.log('[SilentLogin] 调用uni.login获取微信code')
+    uni.login({
+      provider: 'weixin',
+      success: async (loginRes) => {
+        console.log('[SilentLogin] uni.login成功:', loginRes)
+        if (loginRes.code) {
+          try {
+            // 3. 调用后端登录接口（不传用户信息，让后端查询数据库）
+            console.log('[SilentLogin] 调用wechatLogin，code:', loginRes.code.substring(0, 10) + '...')
+            const res = await wechatLogin(loginRes.code, {})
+            console.log('[SilentLogin] wechatLogin返回:', res)
+            if (res && res.token) {
+              console.log('[SilentLogin] 登录成功，用户信息:', res)
+              resolve(true)
+            } else {
+              console.log('[SilentLogin] 登录失败：未获取到token，返回数据:', res)
+              resolve(false)
+            }
+          } catch (e) {
+            console.error('[SilentLogin] 登录失败，异常:', e)
+            resolve(false)
+          }
+        } else {
+          console.log('[SilentLogin] 获取微信code失败，loginRes:', loginRes)
+          resolve(false)
+        }
+      },
+      fail: (err) => {
+        console.error('[SilentLogin] 微信登录调用失败:', err)
+        resolve(false)
+      }
+    })
+  })
+}
+
+/**
+ * 检查并执行自动登录
+ * 用于App.vue中应用启动时调用
+ * @returns {Promise<boolean>}
+ */
+export const checkAndAutoLogin = async () => {
+  console.log('[CheckAndAutoLogin] 开始检查登录状态')
+  // 如果已经登录，不执行
+  if (isLoggedIn()) {
+    console.log('[CheckAndAutoLogin] 已经登录，跳过')
+    return true
+  }
+  
+  console.log('[CheckAndAutoLogin] 未登录，尝试静默登录')
+  // 尝试静默登录
+  const result = await silentAutoLogin()
+  console.log('[CheckAndAutoLogin] 静默登录结果:', result)
+  return result
 }
 

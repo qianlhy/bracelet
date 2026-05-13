@@ -19,9 +19,17 @@ public interface DiyMaterialMapper {
             @Param("colorSeries") List<String> colorSeries);
 
     /**
-     * 用户端材料列表（按名称+尺寸排序）
+     * 用户端材料列表（按名称+尺寸排序,支持分页）
      */
     List<DiyMaterial> listForUser(@Param("categories") List<String> categories,
+            @Param("colorSeries") List<String> colorSeries,
+            @Param("offset") Integer offset,
+            @Param("pageSize") Integer pageSize);
+
+    /**
+     * 统计符合条件的材料数量（用于分页）
+     */
+    int countForUser(@Param("categories") List<String> categories,
             @Param("colorSeries") List<String> colorSeries);
 
     /**

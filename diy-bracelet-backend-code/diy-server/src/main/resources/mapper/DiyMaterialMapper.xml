@@ -22,7 +22,7 @@
         ORDER BY sort ASC, create_time DESC
     </select>
 
-    <!-- 用户端：材料列表（按名称+尺寸排序，使同名相邻且尺寸有序） -->
+    <!-- 用户端：材料列表（按名称+尺寸排序，使同名相邻且尺寸有序，支持分页） -->
     <select id="listForUser" resultType="com.diy.entity.DiyMaterial">
         SELECT id, category_key, color_series_key, title, description, size, color,
                price, stock, weight, image_url, sort, status, create_time, update_time
@@ -45,6 +45,28 @@
                  size ASC,
                  sort ASC,
                  create_time DESC
+        <if test="offset != null and pageSize != null">
+            LIMIT #{offset}, #{pageSize}
+        </if>
+    </select>
+
+    <!-- 用户端：统计符合条件的材料数量 -->
+    <select id="countForUser" resultType="int">
+        SELECT COUNT(*)
+        FROM diy_material
+        WHERE 1=1
+        <if test="categories != null and !categories.isEmpty()">
+            AND category_key IN
+            <foreach collection="categories" item="cat" open="(" separator="," close=")">
+                #{cat}
+            </foreach>
+        </if>
+        <if test="colorSeries != null and !colorSeries.isEmpty()">
+            AND color_series_key IN
+            <foreach collection="colorSeries" item="color" open="(" separator="," close=")">
+                #{color}
+            </foreach>
+        </if>
     </select>
     
     <select id="getById" resultType="com.diy.entity.DiyMaterial">

@@ -231,6 +231,16 @@ const goProductList = () => {
 
 onShow(() => {
   checkLogin()
+  // 延迟检查自动登录，确保App.vue中的自动登录已完成
+  // 自动登录需要调用微信接口，可能需要较长时间
+  setTimeout(() => {
+    checkLogin()
+  }, 1000)
+  
+  // 再次检查，确保万无一失
+  setTimeout(() => {
+    checkLogin()
+  }, 2000)
 })
 
 onMounted(() => {

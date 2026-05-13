@@ -631,10 +631,15 @@ function isPendant(bead) {
   return title.endsWith('吊坠')
 }
 
-// 判断是否为花托或隔断（不计算在长度内）
+// 判断是否为配饰（花托、隔片等，不计算在长度内，之间没有间隙）
 function isSpacerOrSeparator(bead) {
   const title = String(bead?.title || '')
-  return title.includes('花托') || title.includes('隔断') || title.includes('隔圈')
+  const spacerKeywords = [
+    '花托', '隔断', '隔圈',
+    '别针十字架流苏', '四圈镶砖', '土星轨迹',
+    '大冰块', '宫廷风魔盒', '沙金盘缠', '沙金隔片', '菱形微片'
+  ]
+  return spacerKeywords.some(keyword => title.includes(keyword))
 }
 
 // 目标珠子数
@@ -676,8 +681,8 @@ const orderItems = computed(() => {
 })
 
 function getBeadArcSizeRpx(bead) {
-  // 吊坠占一小部分空间 (例如 3mm)，避免重叠
-  if (isPendant(bead)) return 3 * 7
+  // 吊坠和配饰都占一小部分空间 (3mm)，避免重叠，之间没有间隙
+  if (isPendant(bead) || isSpacerOrSeparator(bead)) return 3 * 7
   
   const base = Number(bead?.size || 8) * 7
   return base
@@ -762,15 +767,17 @@ const beadLayouts = computed(() => {
     const remainingArc = circumference - totalBeadArc
     
     // 计算有效间隙数量：只有 珠子-珠子 之间才分配间隙
-    // 吊坠前后都紧贴，不分配间隙
+    // 吊坠和配饰前后都紧贴，不分配间隙
     let validGapCount = 0
     
     if (count > 0) {
         for (let i = 0; i < count; i++) {
             const curr = beads.value[i]
             const next = beads.value[(i + 1) % count]
-            // 如果当前和下一个都不是吊坠，则需要分配间隙
-            if (!isPendant(curr) && !isPendant(next)) {
+            // 如果当前和下一个都不是吊坠且都不是配饰，则需要分配间隙
+            const currIsSpecial = isPendant(curr) || isSpacerOrSeparator(curr)
+            const nextIsSpecial = isPendant(next) || isSpacerOrSeparator(next)
+            if (!currIsSpecial && !nextIsSpecial) {
                 validGapCount++
             }
         }
@@ -796,8 +803,10 @@ const beadLayouts = computed(() => {
       const currSize = getBeadArcSizeRpx(currBead)
       
       // 判断是否需要添加间隙
-      // 只有当前一个不是吊坠，且当前也不是吊坠时，才应用 gap
-      const applyGap = (!isPendant(prevBead) && !isPendant(currBead)) ? gap : 0
+      // 只有当前一个不是吊坠且不是配饰，且当前也不是吊坠且不是配饰时，才应用 gap
+      const prevIsSpecial = isPendant(prevBead) || isSpacerOrSeparator(prevBead)
+      const currIsSpecial = isPendant(currBead) || isSpacerOrSeparator(currBead)
+      const applyGap = (!prevIsSpecial && !currIsSpecial) ? gap : 0
 
       // 累加角度
       // 使用弧长计算角度：arc = r1 + r2 + gap
@@ -1741,26 +1750,24 @@ async function loadProducts(isLoadMore = false) {
 
     const res = await designProductList(params)
     if (requestSeq !== productRequestSeq) return
-    
-    // 处理返回数据
-    // 预期 res 是一个数组(materials) 或者包含 materials 的对象
-    // api.js 的 getDiyMaterialList 已经处理了大部分解构逻辑，返回的是 materials 数组 (带有 totalPages 属性)
-    
-    const list = Array.isArray(res) ? res : []
-    const total = res.totalPages || 0
-    
+
+    // 处理返回数据 - 后端分页响应格式: { materials: [], total, page, size, totalPages }
+    const list = res.materials || []
+    const totalCount = res.total || 0
+    const pages = res.totalPages || 0
+
     const processedList = list.map(item => {
       // 确保图片路径完整
       let imageUrl = item.imageUrl || item.image || ''
       imageUrl = resolveImageUrl(imageUrl)
-      
+
       // 尝试对中文路径进行编码
       if (imageUrl && !imageUrl.startsWith('data:')) {
         try {
           imageUrl = encodeURI(imageUrl)
         } catch (e) {}
       }
-      
+
       // 确保有 color 字段
       if (!item.color) item.color = '#f5f5f5'
       return { ...item, imageUrl, loaded: false }
@@ -1768,23 +1775,16 @@ async function loadProducts(isLoadMore = false) {
 
     if (isLoadMore) {
       goods.value = [...goods.value, ...processedList]
-      if (total) totalPages.value = total
+      if (pages) totalPages.value = pages
     } else {
-      // 第一次加载
-      // 检查是否需要前端分页 (如果后端没分页但返回了大量数据)
-      if (total === 0 && processedList.length > pageSize.value) {
-          allGoods.value = processedList
-          totalPages.value = Math.ceil(processedList.length / pageSize.value)
-          goods.value = processedList.slice(0, pageSize.value)
+      // 第一次加载 - 使用后端分页
+      allGoods.value = []
+      goods.value = processedList
+      if (pages) {
+        totalPages.value = pages
       } else {
-          allGoods.value = []
-          goods.value = processedList
-          if (total) {
-            totalPages.value = total
-          } else {
-             // 估算
-             totalPages.value = processedList.length < pageSize.value ? page.value : page.value + 1
-          }
+        // 如果没有 totalPages，根据总数计算
+        totalPages.value = totalCount > 0 ? Math.ceil(totalCount / pageSize.value) : 1
       }
     }
   } catch (e) {

@@ -24,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -124,7 +125,7 @@ public class CommonController {
             String path = wxCloudStorageUtil.upload(file.getBytes(), objectName);
             java.util.Map<String, String> result = new java.util.HashMap<>();
             result.put("path", path);
-            // 这里返回的url先与path保持一致，前端可按需拼接完整域名
+            // 这里返回的url先与path保持一致,前端可按需拼接完整域名
             result.put("url", path);
             return Result.success(result);
         } catch (Exception e) {
@@ -155,21 +156,18 @@ public class CommonController {
     }
 
     /**
-     * 读取图片文件
+     * 读取图片文件（返回 302 重定向,不占用后端带宽）
      * @param request HTTP请求
-     * @return 图片文件
+     * @return 302 重定向到对象存储
      */
-    @ApiOperation("读取图片文件")
+    @ApiOperation("读取图片文件（302重定向）")
     @GetMapping("/admin/common/image/**")
-    public ResponseEntity<Resource> getImage(HttpServletRequest request) {
+    public ResponseEntity<?> getImageRedirect(HttpServletRequest request) {
         try {
             // 获取请求路径
             String requestURI = request.getRequestURI();
             String imagePath = requestURI.substring(requestURI.indexOf("/admin/common/image/") + 20);
-            
-            log.info("读取图片文件: {}", imagePath);
-            log.info("基础路径basePath: {}", basePath);
-            
+
             // 移除开头的斜杠
             String cleanPath = imagePath;
             if (cleanPath.startsWith("/") || cleanPath.startsWith("\\")) {
@@ -177,84 +175,49 @@ public class CommonController {
             }
             // 统一使用正斜杠
             cleanPath = cleanPath.replace("\\", "/");
-            log.info("清理后的路径cleanPath: {}", cleanPath);
-            
+
             // 安全检查：防止路径遍历攻击
             if (cleanPath.contains("../") || cleanPath.contains("..\\")) {
                 log.warn("检测到路径遍历攻击尝试: {}", imagePath);
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
-            
-            // 先尝试从本地文件系统读取（兼容旧数据和本地开发）
-            try {
-                Path fullPath = Paths.get(basePath, cleanPath).normalize();
-                log.info("完整文件路径fullPath: {}", fullPath);
-                
-                // 检查文件是否在基础路径内
-                Path baseDir = Paths.get(basePath).toAbsolutePath().normalize();
-                log.info("基础目录baseDir: {}", baseDir);
-                
-                if (fullPath.startsWith(baseDir)) {
-                    File file = fullPath.toFile();
-                    log.info("文件对象: exists={}, isFile={}, absolutePath={}", 
-                            file.exists(), file.isFile(), file.getAbsolutePath());
-                    
-                    if (file.exists() && file.isFile()) {
-                        // 检查文件扩展名
-                        String fileName = file.getName();
-                        String extension = getFileExtension(fileName).toLowerCase();
-                        log.info("文件名: {}, 扩展名: {}", fileName, extension);
-                        
-                        if (!ALLOWED_EXTENSIONS.contains(extension)) {
-                            log.warn("不支持的文件类型: {}", extension);
-                            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-                        }
-                        
-                        FileSystemResource resource = new FileSystemResource(file);
-                        MediaType mediaType = getMediaType(extension);
-                        
-                        log.info("从本地文件系统成功读取图片，准备返回: contentType={}", mediaType);
-                        return ResponseEntity.ok()
-                                .contentType(mediaType)
-                                .cacheControl(CacheControl.maxAge(Duration.ofDays(7)))
-                                .body(resource);
-                    }
-                }
-            } catch (Exception e) {
-                // 本地读取异常不影响后续从对象存储读取
-                log.warn("从本地文件系统读取图片异常，将尝试从对象存储读取: {}", e.getMessage());
-            }
-            
-            // 本地没有找到文件，尝试从对象存储读取
-            String objectName = cleanPath;
-            log.info("尝试从对象存储读取文件: {}", objectName);
-            byte[] data = wxCloudStorageUtil.download(objectName);
-            if (data == null || data.length == 0) {
-                log.warn("对象存储中未找到文件: {}", objectName);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            
-            String extension = getFileExtension(objectName).toLowerCase();
+
+            // 检查文件扩展名
+            String extension = getFileExtension(cleanPath).toLowerCase();
             if (!ALLOWED_EXTENSIONS.contains(extension)) {
-                log.warn("对象存储中文件类型不受支持: {}", extension);
+                log.warn("不支持的文件类型: {}", extension);
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
-            
-            MediaType mediaType = getMediaType(extension);
-            ByteArrayResource resource = new ByteArrayResource(data);
-            log.info("从对象存储成功读取图片，准备返回: contentType={}", mediaType);
-            
-            return ResponseEntity.ok()
-                    .contentType(mediaType)
-                    .cacheControl(CacheControl.maxAge(Duration.ofDays(7)))
-                    .body(resource);
-                    
+
+            // 尝试获取 COS 预签名 URL 并返回 302 重定向
+            try {
+                String directUrl = wxCloudStorageUtil.getDirectUrl(cleanPath);
+                log.info("图片302重定向: {} -> {}", cleanPath, directUrl);
+                return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(directUrl)).build();
+            } catch (RuntimeException e) {
+                // 如果获取预签名 URL 失败（如本地开发无密钥），回退到直接下载方式
+                log.warn("获取预签名 URL 失败，回退到直接下载: {}", e.getMessage());
+
+                byte[] data = wxCloudStorageUtil.download(cleanPath);
+                if (data == null || data.length == 0) {
+                    log.warn("对象存储中未找到文件: {}", cleanPath);
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+                }
+
+                MediaType mediaType = getMediaType(extension);
+                ByteArrayResource resource = new ByteArrayResource(data);
+                return ResponseEntity.ok()
+                        .contentType(mediaType)
+                        .cacheControl(CacheControl.maxAge(Duration.ofDays(7)))
+                        .body(resource);
+            }
+
         } catch (Exception e) {
-            log.error("读取图片文件失败", e);
+            log.error("图片访问失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-    
+
     /**
      * 获取文件扩展名
      * @param fileName 文件名
@@ -317,14 +280,14 @@ public class CommonController {
                 return Result.error("文件大小不能超过5MB");
             }
             
-            // 在禁用旧记录之前，先尝试删除旧图片文件
+            // 在禁用旧记录之前,先尝试删除旧图片文件
             CustomerServiceQr oldRecord = customerServiceQrMapper.getActiveOne();
             if (oldRecord != null && oldRecord.getImagePath() != null && !oldRecord.getImagePath().isEmpty()) {
                 log.info("准备删除旧客服二维码图片: {}", oldRecord.getImagePath());
                 wxCloudStorageUtil.delete(oldRecord.getImagePath());
             }
             
-            // 生成对象存储路径，如：customer_service/qr_code_xxx.png
+            // 生成对象存储路径,如：customer_service/qr_code_xxx.png
             String objectName = "customer_service/qr_code_" + System.currentTimeMillis() + "." + extension;
             
             // 上传到对象存储（微信云托管COS）
