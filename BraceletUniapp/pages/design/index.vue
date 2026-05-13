@@ -1368,6 +1368,58 @@ function checkLoginStatus() {
   return isLoggedIn()
 }
 
+
+// 检查手围是否达到上限（用于加入购物车和结算前的检查）
+function checkWristSizeLimit() {
+  // 最大周长 (mm) - 严格按照表格规格 (手围 + 2.4cm)
+  const maxMm = (selectedSize.value + 2.4) * 10
+
+  // 当前总长 (mm) - 排除花托和隔断
+  let currentMm = 0
+  beads.value.forEach(b => {
+    // 花托和隔断不计算在长度内
+    if (isSpacerOrSeparator(b)) {
+      return
+    }
+    // 吊坠占长度 (3mm)
+    if (isPendant(b)) {
+      currentMm += 3
+    } else {
+      currentMm += Number(b.size || 8)
+    }
+  })
+
+  // 如果当前长度小于最大长度的80%，认为手围不够
+  const threshold = maxMm * 0.8
+  const isInsufficient = currentMm < threshold
+
+  return {
+    isInsufficient,
+    currentMm,
+    maxMm,
+    threshold,
+    percentage: Math.round((currentMm / maxMm) * 100)
+  }
+}
+
+// 显示手围不足确认对话框
+function showWristSizeConfirm(onConfirm, onCancel) {
+  const { currentMm, maxMm, percentage } = checkWristSizeLimit()
+  uni.showModal({
+    title: '手围长度不足',
+    content: `当前手围完成度仅 ${percentage}%（${currentMm}mm / ${maxMm}mm），建议继续添加珠子以达到合适的手围长度。是否继续操作？`,
+    confirmText: '继续',
+    cancelText: '取消',
+    success: (res) => {
+      if (res.confirm) {
+        onConfirm && onConfirm()
+      } else {
+        onCancel && onCancel()
+      }
+    }
+  })
+}
+
 // 从设计台加入购物车
 async function addToCartFromDesign() {
   if (!beads.value.length) {
@@ -1375,6 +1427,28 @@ async function addToCartFromDesign() {
     return
   }
 
+  // 检查手围长度
+  const wristCheck = checkWristSizeLimit()
+  if (wristCheck.isInsufficient) {
+    showWristSizeConfirm(
+      () => {
+        // 用户选择继续，执行加入购物车
+        doAddToCartFromDesign()
+      },
+      () => {
+        // 用户选择取消，停留在当前页面
+        console.log('用户取消加入购物车')
+      }
+    )
+    return
+  }
+
+  // 手围足够，直接执行加入购物车
+  doAddToCartFromDesign()
+}
+
+// 实际执行加入购物车的逻辑
+async function doAddToCartFromDesign() {
   // 检查登录状态
   if (!checkLoginStatus()) {
     showLoginPopup.value = true
@@ -1827,6 +1901,23 @@ function confirmSize() {
 
 function showPreview() {
   if (!beads.value.length) return
+  // 检查手围长度
+  const wristCheck = checkWristSizeLimit()
+  if (wristCheck.isInsufficient) {
+    showWristSizeConfirm(
+      () => {
+        // 用户选择继续，显示订单预览
+        showOrderPreview.value = true
+      },
+      () => {
+        // 用户选择取消，停留在当前页面
+        console.log('用户取消结算')
+      }
+    )
+    return
+  }
+
+  // 手围足够，直接显示订单预览
   showOrderPreview.value = true
 }
 

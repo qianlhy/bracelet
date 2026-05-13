@@ -284,7 +284,15 @@ export function repetitionOrder(id) {
 export function reminderOrder(id) {
   return get(`${API_PATHS.ORDER_REMINDER}/${id}`, {})
 }
-
+/**
+ * 修改订单地址
+ * @param {Number} id 订单ID
+ * @param {Object} addressData 地址信息 { name, phone, province, city, district, detail }
+ * @returns {Promise}
+ */
+export function updateOrderAddress(id, addressData) {
+      return post(`${API_PATHS.ORDER_UPDATE_ADDRESS}/${id}`, addressData)
+    }
 /**
  * 申请退款
  * @param {Number} id 订单ID

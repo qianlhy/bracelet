@@ -79,6 +79,8 @@ export const API_PATHS = {
   ORDER_REPETITION: '/user/order/repetition',
   // 催单
   ORDER_REMINDER: '/user/order/reminder',
+    // 修改订单地址
+  ORDER_UPDATE_ADDRESS: '/user/order/updateAddress',
   
   // ==================== 管理员模块 ====================
   // 订单发货

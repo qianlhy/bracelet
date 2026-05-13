@@ -6,29 +6,16 @@
  */
 
 // ==================== 导入真实后端API ====================
-import {
-    addAddress,
-    deleteAddress,
-    getAddressList,
-    getDefaultAddress,
-    setDefaultAddress,
-    wechatLogin
-} from './api.js'
+import { STORAGE_TOKEN_KEY, STORAGE_USER_KEY } from '../config.js'
+import { addAddress, deleteAddress, getAddressList, getDefaultAddress, setDefaultAddress, wechatLogin } from './api.js'
 
 export {
-
-    // 地址管理
-    addAddress,
+addAddress,
     // 购物车
     addToCart, bannerList, cancelOrder, // Refund API
-    cancelRefundOrder, cartAdd, cartDelete, cartList, cartUpdate, categoryList, checkPaymentStatus, clearCart, completeOrder, createOrderFromCart, deleteAddress, deleteCartItem, // Cancel Refund API
-
-
-
-
-
+    cancelRefundOrder, cartAdd, cartDelete, cartList, cartUpdate, categoryList, checkPaymentStatus, clearCart, completeOrder, createDiyOrder, createOrderFromCart, deleteAddress, deleteCartItem, // Cancel Refund API
     // 管理员
-    deliveryOrder, getAddressList,
+    deliveryOrder, designCategoryList, designOrderCreate, designProductList, getAddressList,
     // 轮播图
     getBannerList, getCartList,
     // 分类
@@ -38,12 +25,11 @@ export {
     // 店铺
     getShopStatus, loginWithWeixinCode, orderCreate, orderDetail, orderList, orderPay, payOrder, productDetail, productList, refundOrder, reminderOrder, repetitionOrder, setDefaultAddress, subCartItem,
     // 订单
-    submitOrder,
+    submitOrder, updateOrderAddress, uploadFile,
     // 登录
     wechatLogin
 } from './api.js'
 
-import { STORAGE_TOKEN_KEY, STORAGE_USER_KEY } from '../config.js'
 
 // ==================== 本地存储工具 ====================
 const promise = (data) => Promise.resolve(data)
@@ -104,12 +90,6 @@ export const logout = async () => {
   }
 }
 
-// ==================== DIY设计模块（从后端API获取）====================
-// 已迁移到 api.js，这里直接从 api.js 导出
-export {
-    createDiyOrder, designCategoryList, designOrderCreate, designProductList,
-    uploadFile
-} from './api.js'
 
 // ==================== 地址管理适配层 ====================
 
