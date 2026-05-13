@@ -1750,26 +1750,24 @@ async function loadProducts(isLoadMore = false) {
 
     const res = await designProductList(params)
     if (requestSeq !== productRequestSeq) return
-    
-    // 处理返回数据
-    // 预期 res 是一个数组(materials) 或者包含 materials 的对象
-    // api.js 的 getDiyMaterialList 已经处理了大部分解构逻辑，返回的是 materials 数组 (带有 totalPages 属性)
-    
-    const list = Array.isArray(res) ? res : []
-    const total = res.totalPages || 0
-    
+
+    // 处理返回数据 - 后端分页响应格式: { materials: [], total, page, size, totalPages }
+    const list = res.materials || []
+    const totalCount = res.total || 0
+    const pages = res.totalPages || 0
+
     const processedList = list.map(item => {
       // 确保图片路径完整
       let imageUrl = item.imageUrl || item.image || ''
       imageUrl = resolveImageUrl(imageUrl)
-      
+
       // 尝试对中文路径进行编码
       if (imageUrl && !imageUrl.startsWith('data:')) {
         try {
           imageUrl = encodeURI(imageUrl)
         } catch (e) {}
       }
-      
+
       // 确保有 color 字段
       if (!item.color) item.color = '#f5f5f5'
       return { ...item, imageUrl, loaded: false }
@@ -1777,23 +1775,16 @@ async function loadProducts(isLoadMore = false) {
 
     if (isLoadMore) {
       goods.value = [...goods.value, ...processedList]
-      if (total) totalPages.value = total
+      if (pages) totalPages.value = pages
     } else {
-      // 第一次加载
-      // 检查是否需要前端分页 (如果后端没分页但返回了大量数据)
-      if (total === 0 && processedList.length > pageSize.value) {
-          allGoods.value = processedList
-          totalPages.value = Math.ceil(processedList.length / pageSize.value)
-          goods.value = processedList.slice(0, pageSize.value)
+      // 第一次加载 - 使用后端分页
+      allGoods.value = []
+      goods.value = processedList
+      if (pages) {
+        totalPages.value = pages
       } else {
-          allGoods.value = []
-          goods.value = processedList
-          if (total) {
-            totalPages.value = total
-          } else {
-             // 估算
-             totalPages.value = processedList.length < pageSize.value ? page.value : page.value + 1
-          }
+        // 如果没有 totalPages，根据总数计算
+        totalPages.value = totalCount > 0 ? Math.ceil(totalCount / pageSize.value) : 1
       }
     }
   } catch (e) {

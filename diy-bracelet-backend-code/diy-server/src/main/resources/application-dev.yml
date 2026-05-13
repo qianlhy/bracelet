@@ -4,16 +4,18 @@ sky:
     host: localhost
     port: 3306
     database: diy_bangle
-    username: root
-    password: 123456
+    username: diy_bangle
+    password: xxx
 #  alioss:
 #    endpoint: oss-cn-beijing.aliyuncs.com
 
 #    bucket-name: my-tang-big-event
   wxcloud:
     storage:
-      bucket-name: 7072-prod-6gf1u2dc2e9e4f49-1391651365
+      bucket-name: 7072-prod-xxxxx-1391651365
       region: ap-shanghai
+      secret-id: xxxx
+      secret-key: xxxxx
   redis:
     host: localhost
     port: 6379
@@ -30,17 +32,17 @@ sky:
     
     # secret: 小程序或公众号的AppSecret
     # 获取路径：微信公众平台 -> 开发 -> 开发设置 -> 开发者密码(AppSecret)
-    secret: 18166e4cdca2a2d1fbfa2fa4db1f6bf4
+    secret: xxxx
     
     # mchid: 微信支付商户号
     # 获取路径：微信支付商户平台 -> 账户中心 -> 商户信息 -> 商户号
-    mchid: 1734348120
+    mchid: xxxx
     
     # ---------- 商户API证书配置（用于商户请求签名）----------
     # mchSerialNo: 商户API证书序列号
     # 获取路径：微信支付商户平台 -> 账户中心 -> API安全 -> API证书 -> 查看证书
     # 格式要求：纯十六进制字符串（大写字母+数字）
-    mchSerialNo: 5631D4B837843E6E770BE80D00AFC8B86B38A97B
+    mchSerialNo: xxx
     
     # privateKeyFilePath: 商户私钥文件路径（apiclient_key.pem）
     # 获取方式：微信支付商户平台 -> 账户中心 -> API安全 -> 申请API证书 -> 下载证书
@@ -59,20 +61,20 @@ sky:
     #   4. 用于回调通知的解密（如支付成功通知、退款通知等）
     # 示例格式：YourAPIv3Key32CharactersLong12
     # 当前值请替换为您在商户平台设置的真实32位APIv3密钥
-    apiV3Key: 12345678910111213141516171819202
+    apiV3Key: x
     
     # ---------- 微信支付公钥配置（公钥验签方式）----------
     # 使用微信支付公钥验签，不需要下载平台证书
-    weChatPayPublicKeyId: PUB_KEY_ID_0117343481202025120300381767000202
+    weChatPayPublicKeyId: xxx
     # 本地开发：使用本地绝对路径（如 E:/code/xxx/pub_key.pem）
     # Docker部署：使用容器内路径（/app/certs/pub_key.pem）
     weChatPayPublicKeyPath: /app/certs/pub_key.pem
 
-    notifyUrl: https://springboot-gq7m-207364-6-1391651365.sh.run.tcloudbase.com/notify/paySuccess
+    notifyUrl: https://abc.052909.com//notify/paySuccess
     
     # refundNotifyUrl: 退款成功回调地址（必须是公网可访问的URL）
     # 格式：http(s)://域名/notify/refundSuccess
-    refundNotifyUrl: https://springboot-gq7m-207364-6-1391651365.sh.run.tcloudbase.com/notify/refundSuccess
+    refundNotifyUrl: https://abc.052909.com//notify/refundSuccess
     
     # ==================== 配置检查清单 ====================
     # □ 1. appid 和 secret 已从微信公众平台获取

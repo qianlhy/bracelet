@@ -13,6 +13,7 @@ import com.diy.mapper.DiyCategoryMapper;
 import com.diy.mapper.DiyMaterialMapper;
 import com.diy.mapper.OrderDetailMapper;
 import com.diy.mapper.OrderMapper;
+import com.diy.result.PageResult;
 import com.diy.service.DesignService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,17 +68,28 @@ public class DesignServiceImpl implements DesignService {
     }
 
     /**
-     * 查询DIY材料列表（支持分类和色系筛选）
-     * 
+     * 查询DIY材料列表（支持分类和色系筛选,支持分页）
+     *
      * @param categories  分类键列表
      * @param colorSeries 色系键列表
+     * @param page        页码（从1开始）
+     * @param pageSize    每页数量
      * @return
      */
     @Override
-    public List<DiyMaterial> getMaterialList(List<String> categories, List<String> colorSeries) {
-        log.info("查询DIY材料列表，分类：{}，色系：{}", categories, colorSeries);
-        // 用户端需要同名聚合且按尺寸排序
-        return diyMaterialMapper.listForUser(categories, colorSeries);
+    public PageResult getMaterialList(List<String> categories, List<String> colorSeries, Integer page, Integer pageSize) {
+        log.info("查询DIY材料列表,分类：{},色系：{},页码：{},每页数量：{}", categories, colorSeries, page, pageSize);
+
+        // 统计总数
+        int total = diyMaterialMapper.countForUser(categories, colorSeries);
+
+        // 计算分页偏移量
+        int offset = (page - 1) * pageSize;
+
+        // 查询分页数据
+        List<DiyMaterial> records = diyMaterialMapper.listForUser(categories, colorSeries, offset, pageSize);
+
+        return new PageResult(total, records);
     }
 
     /**
@@ -91,7 +103,7 @@ public class DesignServiceImpl implements DesignService {
     public Orders createDiyOrder(DiyOrderCreateDTO diyOrderCreateDTO) {
         // 获取当前用户ID
         Long userId = BaseContext.getCurrentId();
-        log.info("创建DIY订单，用户ID: {}, 订单项: {}", userId, diyOrderCreateDTO.getItems());
+        log.info("创建DIY订单,用户ID: {}, 订单项: {}", userId, diyOrderCreateDTO.getItems());
 
         // 计算总金额并构建订单项列表
         BigDecimal totalAmount = BigDecimal.ZERO;
@@ -107,11 +119,11 @@ public class DesignServiceImpl implements DesignService {
                 int affectedRows = diyMaterialMapper.deductStock(materialId, quantity);
 
                 if (affectedRows == 0) {
-                    // 库存不足，查询材料信息用于错误提示
+                    // 库存不足,查询材料信息用于错误提示
                     DiyMaterial material = diyMaterialMapper.getById(materialId);
                     String materialName = material != null ? material.getTitle() : "材料ID:" + materialId;
                     int currentStock = material != null && material.getStock() != null ? material.getStock() : 0;
-                    throw new OrderBusinessException("材料【" + materialName + "】库存不足，当前库存：" + currentStock);
+                    throw new OrderBusinessException("材料【" + materialName + "】库存不足,当前库存：" + currentStock);
                 }
 
                 log.info("材料库存扣减成功: materialId={}, quantity={}", materialId, quantity);
@@ -174,11 +186,11 @@ public class DesignServiceImpl implements DesignService {
         // 插入订单
         orderMapper.insert(order);
         Long orderId = order.getId();
-        log.info("DIY订单创建成功，订单ID: {}, 订单号: {}, 金额: {}", orderId, orderNo, totalAmount);
+        log.info("DIY订单创建成功,订单ID: {}, 订单号: {}, 金额: {}", orderId, orderNo, totalAmount);
 
         // 插入订单详情
         if (!orderItems.isEmpty()) {
-            log.info("准备插入DIY订单详情，订单项数量: {}", orderItems.size());
+            log.info("准备插入DIY订单详情,订单项数量: {}", orderItems.size());
             for (OrderItem orderItem : orderItems) {
                 orderItem.setOrderId(orderId);
                 log.info("设置订单项orderId: {}, materialId: {}, title: {}",
@@ -186,7 +198,7 @@ public class DesignServiceImpl implements DesignService {
             }
 
             try {
-                log.info("开始执行 insertBatch，参数数量: {}", orderItems.size());
+                log.info("开始执行 insertBatch,参数数量: {}", orderItems.size());
                 orderDetailMapper.insertBatch(orderItems);
                 log.info("DIY订单详情插入成功");
             } catch (Exception e) {

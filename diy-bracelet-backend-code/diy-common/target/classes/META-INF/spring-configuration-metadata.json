@@ -31,7 +31,8 @@
     {
       "name": "diy.jwt.admin-ttl",
       "type": "java.lang.Long",
-      "sourceType": "com.diy.properties.JwtProperties"
+      "sourceType": "com.diy.properties.JwtProperties",
+      "defaultValue": 0
     },
     {
       "name": "diy.jwt.user-secret-key",
@@ -47,7 +48,8 @@
     {
       "name": "diy.jwt.user-ttl",
       "type": "java.lang.Long",
-      "sourceType": "com.diy.properties.JwtProperties"
+      "sourceType": "com.diy.properties.JwtProperties",
+      "defaultValue": 0
     },
     {
       "name": "sky.wechat.api-v3-key",

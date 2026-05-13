@@ -29,7 +29,7 @@ export const API_PATHS = {
   WECHAT_LOGIN: '/user/user/login',
   // 查询当前用户信息（用于token失效时恢复登录）
   USER_INFO: '/user/user/info',
-  
+
   // ==================== 分类模块 ====================
   // 查询分类列表
   CATEGORY_LIST: '/user/category/list',
